@@ -1,17 +1,23 @@
 import type { Metadata } from 'next'
-import { Rajdhani, Share_Tech_Mono } from 'next/font/google'
+import { Space_Grotesk, JetBrains_Mono, Inter } from 'next/font/google'
 import './globals.css'
 
-const rajdhani = Rajdhani({
-  weight: ['400', '500', '600', '700'],
+const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
-  variable: '--font-rajdhani',
+  weight: ['500', '600', '700'],
+  variable: '--font-display',
 })
 
-const shareTechMono = Share_Tech_Mono({
-  weight: '400',
+const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
-  variable: '--font-share-tech-mono',
+  weight: ['400', '500', '700'],
+  variable: '--font-mono',
+})
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-body',
 })
 
 export const metadata: Metadata = {
@@ -21,8 +27,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${rajdhani.variable} ${shareTechMono.variable} h-full`}>
-      <body className="h-full bg-bg-primary text-text-primary antialiased">
+    <html lang="en" className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} ${inter.variable} h-full`}>
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="h-full bg-background text-on-surface antialiased">
         {children}
       </body>
     </html>

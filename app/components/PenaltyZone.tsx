@@ -10,10 +10,8 @@ interface Props {
   initialActiveTime: number
 }
 
-const REQUIRED_SECONDS = 7200 // 2 hours
+const REQUIRED_SECONDS = 7200
 const TWELVE_HOURS_MS = 12 * 3600 * 1000
-const MONO = { fontFamily: 'var(--font-share-tech-mono)' }
-const RAJD = { fontFamily: 'var(--font-rajdhani)' }
 
 function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600)
@@ -40,42 +38,30 @@ export default function PenaltyZone({ startedAt, initialActiveTime }: Props) {
     return h >= 23 || h < 7
   })()
 
-  // ── Main timer ───────────────────────────────────────────
   useEffect(() => {
     if (completed || failed) return
-
     const id = setInterval(() => {
       const hour = new Date().getHours()
-      if (hour >= 23 || hour < 7) return // rest period
+      if (hour >= 23 || hour < 7) return
       setActiveSeconds((prev) => prev + 1)
     }, 1000)
-
     return () => clearInterval(id)
   }, [completed, failed])
 
-  // ── Save timer to DB periodically ───────────────────────
   useEffect(() => {
     if (completed || failed) return
-    const id = setInterval(() => {
-      void updatePenaltyActiveTime(activeSecondsRef.current)
-    }, 30000)
+    const id = setInterval(() => { void updatePenaltyActiveTime(activeSecondsRef.current) }, 30000)
     return () => clearInterval(id)
   }, [completed, failed])
 
-  // ── Check completion ─────────────────────────────────────
   useEffect(() => {
-    if (activeSeconds >= REQUIRED_SECONDS && !completed && !failed) {
-      handleComplete()
-    }
+    if (activeSeconds >= REQUIRED_SECONDS && !completed && !failed) handleComplete()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSeconds])
 
-  // ── Check 12-hour deadline ───────────────────────────────
   useEffect(() => {
     const check = () => {
-      if (!completed && !failed && Date.now() >= deadline) {
-        handleFail('Penalty Zone timed out.')
-      }
+      if (!completed && !failed && Date.now() >= deadline) handleFail('Penalty Zone timed out.')
     }
     check()
     const id = setInterval(check, 60000)
@@ -83,7 +69,6 @@ export default function PenaltyZone({ startedAt, initialActiveTime }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [completed, failed])
 
-  // ── Visibility change: reset timer on leave ──────────────
   useEffect(() => {
     const onVisibility = () => {
       if (document.hidden && !completed && !failed) {
@@ -117,21 +102,16 @@ export default function PenaltyZone({ startedAt, initialActiveTime }: Props) {
 
   const progressPct = Math.min(100, Math.round((activeSeconds / REQUIRED_SECONDS) * 100))
   const timeRemaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
-  const deadlineFormatted = formatTime(timeRemaining)
 
   if (completed) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: '#070A12' }}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-container-lowest">
         <div className="text-center max-w-sm">
-          <p style={{ ...MONO, fontSize: '10px', letterSpacing: '3px', color: '#34d399', marginBottom: 24 }}>
-            PENALTY CLEARED
-          </p>
-          <p style={{ ...RAJD, fontSize: '32px', fontWeight: 700, color: '#E7ECFF', lineHeight: 1.2, marginBottom: 16 }}>
+          <p className="font-mono text-system-label text-secondary mb-6">PENALTY CLEARED</p>
+          <p className="font-display text-headline-lg text-on-surface mb-4">
             The system acknowledges<br />your endurance.
           </p>
-          <p style={{ ...MONO, fontSize: '11px', color: '#8D96B8' }}>
-            Resume your hunt.
-          </p>
+          <p className="font-mono text-system-label text-outline">Resume your hunt.</p>
         </div>
       </div>
     )
@@ -139,12 +119,10 @@ export default function PenaltyZone({ startedAt, initialActiveTime }: Props) {
 
   if (failed) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: '#070A12' }}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-container-lowest">
         <div className="text-center max-w-sm">
-          <p style={{ ...MONO, fontSize: '10px', letterSpacing: '3px', color: '#ff6b6b', marginBottom: 24 }}>
-            PENALTY FAILED
-          </p>
-          <p style={{ ...MONO, fontSize: '12px', color: '#8D96B8', lineHeight: 1.8 }}>
+          <p className="font-mono text-system-label text-error mb-6">PENALTY FAILED</p>
+          <p className="font-mono text-system-label text-on-surface-variant leading-relaxed">
             {failMsg || 'Penalty Zone failed. Consequences applied.'}
           </p>
         </div>
@@ -153,95 +131,100 @@ export default function PenaltyZone({ startedAt, initialActiveTime }: Props) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center p-6"
-      style={{ background: '#070A12', border: '1px solid rgba(255,107,107,0.15)' }}
-    >
-      {/* Header */}
-      <p style={{ ...MONO, fontSize: '10px', letterSpacing: '4px', color: '#ff6b6b', marginBottom: 8 }}>
-        PENALTY ZONE ACTIVE
-      </p>
-      <p style={{ ...MONO, fontSize: '10px', color: '#8D96B8', marginBottom: 40 }}>
-        Stay active for 2 continuous hours
-      </p>
+    <div className="bg-surface-container-lowest min-h-screen flex flex-col relative overflow-hidden fixed inset-0 z-50">
+      {/* Scanning lines */}
+      <div className="absolute inset-0 pointer-events-none scanlines z-0" />
 
-      {/* Active timer */}
-      <p
-        style={{ ...RAJD, fontSize: '64px', fontWeight: 700, color: '#ff6b6b', lineHeight: 1, marginBottom: 8 }}
-      >
-        {formatTime(activeSeconds)}
-      </p>
-      <p style={{ ...MONO, fontSize: '9px', color: '#8D96B8', marginBottom: 32, letterSpacing: '2px' }}>
-        ACTIVE TIME
-      </p>
+      {/* HUD corners */}
+      <div className="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-error/20 z-0" />
+      <div className="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-error/20 z-0" />
+      <div className="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-error/20 z-0" />
+      <div className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-error/20 z-0" />
 
-      {/* Progress bar */}
-      <div className="w-full max-w-xs mb-2">
-        <div className="flex justify-between mb-1">
-          <span style={{ ...MONO, fontSize: '9px', color: '#8D96B8' }}>PROGRESS</span>
-          <span style={{ ...MONO, fontSize: '9px', color: '#ff6b6b' }}>{progressPct}%</span>
+      {/* Top HUD bar */}
+      <div className="absolute top-10 left-4 right-4 flex justify-between items-start border-t border-error/50 pt-2 font-mono text-system-label text-error uppercase z-10 opacity-70">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined" style={{ fontSize: '14px', fontVariationSettings: "'FILL' 1" }}>warning</span>
+          SEC-LEVEL: MAXIMUM
         </div>
-        <div style={{ height: 6, background: '#1A2035', borderRadius: 3, overflow: 'hidden' }}>
-          <div
-            style={{
-              height: '100%',
-              width: `${progressPct}%`,
-              background: 'linear-gradient(90deg, #ff6b6b80, #ff6b6b)',
-              transition: 'width 1s linear',
-              borderRadius: 3,
-            }}
-          />
-        </div>
+        <span>ID: 884-X9-PRTCL</span>
       </div>
 
-      {/* Deadline */}
-      <p style={{ ...MONO, fontSize: '10px', color: '#8D96B8', marginBottom: 24 }}>
-        Window closes in{' '}
-        <span style={{ color: '#ffc432' }}>{deadlineFormatted}</span>
-      </p>
-
-      {/* Rest period notice */}
-      {isRestTime && (
-        <div
-          style={{
-            background: 'rgba(75,45,189,0.1)',
-            border: '1px solid rgba(75,45,189,0.3)',
-            borderRadius: 6,
-            padding: '10px 16px',
-            marginBottom: 16,
-            maxWidth: 280,
-            textAlign: 'center',
-          }}
-        >
-          <p style={{ ...MONO, fontSize: '10px', color: '#8D96B8' }}>
-            Rest period. Timer paused until 7am.
-          </p>
-        </div>
-      )}
-
-      {/* Timer reset message */}
+      {/* Timer reset alert */}
       {timerResetMsg && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 24,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: 'rgba(255,107,107,0.15)',
-            border: '1px solid rgba(255,107,107,0.4)',
-            borderRadius: 6,
-            padding: '8px 16px',
-          }}
-        >
-          <p style={{ ...MONO, fontSize: '11px', color: '#ff6b6b' }}>
-            Focus broken. Timer reset.
-          </p>
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-error-container/20 border border-error px-4 py-2 z-20">
+          <p className="font-mono text-system-label text-error">Focus broken. Timer reset.</p>
         </div>
       )}
 
-      <p style={{ ...MONO, fontSize: '9px', color: '#4B2DBD', textAlign: 'center', maxWidth: 260 }}>
-        Time does not count between 11pm and 7am
-      </p>
+      <main className="flex-1 flex flex-col items-center justify-center p-4 z-10 w-full">
+        <div className="flex flex-col items-center text-center space-y-10 w-full max-w-md">
+
+          {/* Header */}
+          <div className="flex flex-col items-center space-y-4">
+            <div className="relative inline-block border border-error bg-error/10 px-8 py-3 shadow-[0_0_15px_rgba(255,180,171,0.15)]">
+              <div className="absolute inset-0 border border-error opacity-60 blur-[3px]" />
+              <h1 className="font-display text-headline-lg text-error uppercase relative z-10 tracking-[0.15em]">
+                PENALTY ZONE
+              </h1>
+            </div>
+            <div className="flex items-center gap-3 bg-surface-container-high/80 px-4 py-1.5 border border-outline-variant backdrop-blur-md">
+              <span className="w-2 h-2 bg-error shadow-[0_0_8px_rgba(255,180,171,0.8)]" />
+              <span className="font-mono text-system-label text-error uppercase tracking-[0.3em]">ACTIVE STATUS LOGGING</span>
+            </div>
+          </div>
+
+          {/* Timer */}
+          <div className="flex flex-col items-center w-full">
+            <div className="font-display text-[64px] leading-none text-error tracking-tighter py-6 drop-shadow-[0_0_12px_rgba(255,180,171,0.3)]">
+              {formatTime(activeSeconds)}
+            </div>
+
+            <div className="w-full flex flex-col space-y-3 mt-2 px-4">
+              <div className="w-full h-1 bg-surface-variant relative">
+                <div
+                  className="absolute top-0 left-0 h-full bg-error"
+                  style={{ width: `${progressPct}%`, transition: 'width 1s linear' }}
+                >
+                  <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-r from-transparent to-white/90" />
+                </div>
+              </div>
+              <div className="flex justify-between font-mono text-system-label text-outline uppercase">
+                <span>00:00:00</span>
+                <span className="text-error">02:00:00 GOAL</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Instructions */}
+          <div className="relative border border-outline-variant/50 p-6 bg-surface-container-low/80 backdrop-blur-md w-full">
+            <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-error" />
+            <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-error" />
+            <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-error" />
+            <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-error" />
+
+            <div className="flex flex-col items-center space-y-3 font-mono text-system-label uppercase text-center">
+              <span className="text-on-surface flex items-center gap-2">
+                <span className="material-symbols-outlined text-error" style={{ fontSize: '18px' }}>timer</span>
+                Stay active for 2 continuous hours.
+              </span>
+              <span className="text-error font-bold tracking-widest bg-error/10 px-3 py-1 w-full border border-error/20">
+                LEAVE APP = TIMER RESETS
+              </span>
+              {isRestTime && (
+                <span className="text-primary-container">Rest period active. Timer paused until 7am.</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Deadline footer */}
+      <div className="absolute bottom-4 left-4 right-4 flex justify-center border-b border-error/30 pb-2 z-10">
+        <span className="font-mono text-system-label text-error uppercase tracking-[0.2em] opacity-80">
+          DEADLINE EXPIRES: {formatTime(timeRemaining)}
+        </span>
+      </div>
     </div>
   )
 }

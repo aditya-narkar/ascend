@@ -13,6 +13,8 @@ import SelectionPhase from './SelectionPhase'
 import LevelUpModal from './LevelUpModal'
 import DailyCompletionSummary from './DailyCompletionSummary'
 import PenaltyZone from './PenaltyZone'
+import CompletionRing from './CompletionRing'
+import StreakCard from './StreakCard'
 import type { UserProfile, Stats, Quest, QuestPool, CycleReportData, PoolCategory, PenaltyQuest } from '@/lib/types'
 
 const STAT_LABELS: Record<string, string> = {
@@ -21,9 +23,25 @@ const STAT_LABELS: Record<string, string> = {
 const STAT_COLORS: Record<string, string> = {
   strength: '#6CCBFF', focus: '#8EF0FF', discipline: '#A78BFA', confidence: '#F59E0B',
 }
-const CATEGORY_COLORS: Record<string, string> = {
-  physical: '#6CCBFF', mental: '#34D399', discipline: '#A78BFA', elite: '#F59E0B',
-  lifestyle: '#A78BFA', focus: '#8EF0FF', bad_habits: '#F59E0B',
+
+type HuntTab = 'all' | 'physical' | 'mental' | 'focus'
+
+const CATEGORY_ICONS: Record<string, string> = {
+  physical: 'directions_run',
+  mental: 'menu_book',
+  focus: 'my_location',
+  discipline: 'gavel',
+  lifestyle: 'home',
+  bad_habits: 'block',
+  elite: 'star',
+}
+
+function formatHuntDate(): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}.${m}.${day}`
 }
 
 interface Props {
@@ -42,12 +60,14 @@ interface Props {
   currentCycleNumber: number
   kaizenThreshold: number
   cycleExpiresDate: string | null
+  shieldMessage?: string | null
 }
 
 export default function DashboardClient({
   profile, stats, quests, penaltyQuests, dayCount, monarchProgress, rankColor,
   needsSelectionPhase, isFirstCycle, cycleReport, questPoolsByCategory,
   previousSelectionIds, currentCycleNumber, kaizenThreshold, cycleExpiresDate,
+  shieldMessage,
 }: Props) {
   const router = useRouter()
   const [questList, setQuestList] = useState<Quest[]>(quests)
@@ -66,6 +86,8 @@ export default function DashboardClient({
   const [penaltyQuestList, setPenaltyQuestList] = useState<PenaltyQuest[]>(penaltyQuests)
   const [penaltyProcessingId, setPenaltyProcessingId] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(quests.length === 0 && !needsSelectionPhase)
+  const [activeTab, setActiveTab] = useState<HuntTab>('all')
 
   // ── Per-quest processing lock helpers ───────────────────────
   const addProcessing = useCallback((id: string) => {
@@ -121,8 +143,29 @@ export default function DashboardClient({
   const statAnimKey = useRef(0)
   const msgTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => { setQuestList(quests) }, [quests])
+  // Sync from server — but never wipe a non-empty local list with an empty response
+  // (empty can occur during router.refresh() if the server had a generation race)
+  useEffect(() => {
+    setQuestList((prev) => quests.length > 0 ? quests : prev)
+  }, [quests])
   useEffect(() => { setLocalTotalXP(profile.total_xp) }, [profile.total_xp])
+
+  // Auto-recover: if dashboard loaded with 0 quests and user has active selections,
+  // trigger generation client-side and refresh — handles server-side timing races
+  useEffect(() => {
+    if (quests.length > 0 || needsSelectionPhase) {
+      setIsInitializing(false)
+      return
+    }
+    setIsInitializing(true)
+    ensureTodayQuests(profile.id)
+      .then((result) => {
+        if (result.quests.length > 0) setQuestList(result.quests)
+        router.refresh()
+      })
+      .finally(() => setIsInitializing(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // mount only — intentional
 
   useEffect(() => {
     function tick() {
@@ -287,7 +330,14 @@ export default function DashboardClient({
     ? Math.max(0, Math.ceil((new Date(cycleExpiresDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : null
 
-  const regularQuests = questList.filter((q) => q.quest_type !== 'elite')
+  const allRegularQuests = questList.filter((q) => q.quest_type !== 'elite')
+  const regularQuests = activeTab === 'all'
+    ? allRegularQuests
+    : activeTab === 'physical'
+      ? allRegularQuests.filter((q) => q.category === 'physical')
+      : activeTab === 'mental'
+        ? allRegularQuests.filter((q) => ['mental', 'discipline', 'lifestyle', 'bad_habits'].includes(q.category))
+        : allRegularQuests.filter((q) => q.category === 'focus')
   const eliteQuest = questList.find((q) => q.quest_type === 'elite')
   const isEliteLocked = profile.level < 6
 
@@ -306,201 +356,170 @@ export default function DashboardClient({
 
   return (
     <div className="max-w-lg mx-auto">
-      {/* Tier 1 penalty banner */}
+      {/* Penalty + cycle banners */}
       {profile.penalty_tier === 1 && (
-        <div
-          className="px-4 py-2 text-center"
-          style={{ background: 'rgba(255,107,107,0.06)', borderBottom: '1px solid rgba(255,107,107,0.3)' }}
-        >
-          <p style={{ fontFamily: 'var(--font-share-tech-mono)', fontSize: '10px', color: '#ff6b6b' }}>
-            STAT PENALTY ACTIVE — Push harder today
-          </p>
+        <div className="px-4 py-2 text-center bg-error-container/10 border-b border-error/30">
+          <p className="font-mono text-system-label text-error">STAT PENALTY ACTIVE — Push harder today</p>
         </div>
       )}
-
-      {/* Tier 2 penalty banner */}
       {profile.penalty_tier === 2 && pendingPenaltyQuest && (
-        <div
-          className="px-4 py-2 text-center"
-          style={{ background: 'rgba(255,107,107,0.08)', borderBottom: '1px solid rgba(255,107,107,0.4)' }}
-        >
-          <p style={{ fontFamily: 'var(--font-share-tech-mono)', fontSize: '10px', color: '#ff6b6b' }}>
-            DEBT UNRESOLVED — Clear the penalty quest to continue
-          </p>
+        <div className="px-4 py-2 text-center bg-error-container/15 border-b border-error/40">
+          <p className="font-mono text-system-label text-error">DEBT UNRESOLVED — Clear the penalty quest to continue</p>
         </div>
       )}
-
-      {/* Cycle expiry warning banner */}
       {cycleExpiresDays !== null && cycleExpiresDays > 0 && cycleExpiresDays <= 3 && (
-        <div
-          className="px-4 py-2 text-center"
-          style={{ borderBottom: '1px solid rgba(255,196,50,0.2)' }}
-        >
-          <p style={{ fontFamily: 'var(--font-share-tech-mono)', fontSize: '10px', color: '#ffc432' }}>
+        <div className="px-4 py-2 text-center border-b border-tertiary/20">
+          <p className="font-mono text-system-label text-tertiary">
             Cycle ends in {cycleExpiresDays} day{cycleExpiresDays !== 1 ? 's' : ''}. Prepare for new selection.
           </p>
         </div>
       )}
 
-    <div className="px-4 py-6 space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs tracking-[0.3em] text-text-secondary">DAY {dayCount}</p>
-          <h1 className="text-2xl font-bold tracking-wide text-text-primary" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-            {profile.hunter_name}
-          </h1>
-        </div>
-        <button onClick={() => logout()} className="text-text-secondary/40 hover:text-text-secondary p-2 transition-colors text-xs tracking-widest">
-          EXIT
-        </button>
-      </div>
-
-      {/* Elite unlock banner */}
-      {eliteUnlockBanner && (
-        <div className="elite-unlock-pulse bg-yellow-500/10 border border-yellow-500/40 rounded-sm p-3 flex items-center justify-between slide-up">
-          <div>
-            <p className="text-xs tracking-[0.3em] text-yellow-400 font-bold" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-              ELITE RANK REACHED
-            </p>
-            <p className="text-xs text-yellow-400/60 mt-0.5">ELITE QUESTS NOW ACTIVE</p>
-          </div>
-          <button onClick={() => setEliteUnlockBanner(false)} className="text-yellow-400/40 hover:text-yellow-400 text-xs px-2 py-1">
-            ✕
-          </button>
-        </div>
-      )}
-
-      {/* Identity Card */}
-      <div className="bg-card border border-border rounded-sm p-5 scan-line">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <span
-                className="rank-badge text-sm px-2 py-0.5 border rounded-sm"
-                style={{ color: rankColor, borderColor: rankColor + '44', background: rankColor + '11' }}
-              >
-                RANK {profile.rank}
-              </span>
-              <span className="text-text-secondary text-xs tracking-widest">LVL {profile.level}</span>
+      {/* Sticky header */}
+      <header className="bg-surface border-b border-outline-variant sticky top-0 z-40">
+        <div className="flex justify-between items-center w-full px-4 py-2 h-14">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-primary-container flex items-center justify-center font-mono text-system-label text-on-primary-container">
+              {(profile.hunter_name?.[0] ?? '?').toUpperCase()}
             </div>
-            <p className="text-text-secondary text-xs tracking-widest mt-1">{profile.archetype}</p>
+            <span className="font-mono text-system-label text-secondary tracking-widest">SYSTEM ACTIVE</span>
           </div>
-          <div className="text-right relative">
-            <p className="text-xs text-text-secondary tracking-widest">TOTAL XP</p>
-            <p
-              className={`text-highlight-1 text-lg font-bold ${xpDelta ? 'xp-pop' : ''}`}
-              key={xpDelta?.key}
-              style={{ fontFamily: 'var(--font-rajdhani)' }}
-            >
-              {localTotalXP.toLocaleString()}
-            </p>
-            {xpDelta && (
-              <span key={`xp-float-${xpDelta.key}`} className="absolute -top-5 right-0 text-xs text-green-400 font-bold float-up-fade">
-                +{xpDelta.amount}
-              </span>
-            )}
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-system-label text-on-surface-variant">DAY {dayCount}</span>
+            <button onClick={() => logout()} className="font-mono text-system-label text-outline hover:text-on-surface transition-colors">
+              EXIT
+            </button>
           </div>
         </div>
-        <div className="space-y-1.5">
-          <div className="flex justify-between text-xs text-text-secondary tracking-widest">
-            <span>XP TO NEXT LEVEL</span>
-            <span>{profile.current_xp} / {profile.xp_to_next_level}</span>
-          </div>
-          <div className="h-2 bg-bg-secondary rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full xp-bar-fill transition-all duration-700"
-              style={{ width: `${xpPercent}%`, background: 'linear-gradient(90deg, #4B2DBD, #6CCBFF)' }}
-            />
-          </div>
-        </div>
-      </div>
+      </header>
 
-      {/* Monarch Bar */}
-      <div className="bg-card border border-border rounded-sm p-4">
-        <div className="flex justify-between items-center mb-2">
-          <p className="text-xs tracking-[0.3em] text-text-secondary">MONARCH AWAKENING</p>
-          <p className="text-xs text-highlight-2">{monarchProgress}%</p>
+    <div className="space-y-4 pb-20">
+
+      {/* Identity card */}
+      <section className="card-gradient border border-outline-variant p-6 relative overflow-hidden mx-4 mt-4">
+        <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-primary opacity-50" />
+        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-primary opacity-50" />
+
+        {/* Elite unlock banner inline */}
+        {eliteUnlockBanner && (
+          <div className="mb-4 p-3 bg-tertiary/10 border border-tertiary/40 flex items-center justify-between">
+            <div>
+              <p className="font-mono text-system-label text-tertiary">ELITE RANK REACHED</p>
+              <p className="font-mono text-[10px] text-tertiary/60 mt-0.5 tracking-widest">ELITE QUESTS NOW ACTIVE</p>
+            </div>
+            <button onClick={() => setEliteUnlockBanner(false)} className="text-tertiary/40 hover:text-tertiary text-xs px-2 py-1">✕</button>
+          </div>
+        )}
+
+        <div className="flex justify-between items-start">
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-system-label text-secondary tracking-[0.3em]">CURRENT RANK</span>
+            <div className="font-display text-[64px] leading-none text-primary level-glow font-bold">
+              {profile.level}
+            </div>
+            <span className="font-mono text-system-label text-on-surface-variant">
+              {profile.archetype} · {profile.rank} RANK
+            </span>
+          </div>
+          <CompletionRing completed={completedCount} total={questList.length} minimum={kaizenThreshold} />
         </div>
-        <div className="h-1 bg-bg-secondary rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-700"
-            style={{
-              width: `${monarchProgress}%`,
-              background: 'linear-gradient(90deg, #37207D, #8EF0FF)',
-              boxShadow: monarchProgress > 0 ? '0 0 10px rgba(142,240,255,0.4)' : 'none',
-            }}
-          />
+
+        {/* XP bar */}
+        <div className="mt-6">
+          <div className="flex justify-between font-mono text-system-label mb-2 text-on-surface">
+            <span>XP: {profile.current_xp} / {profile.xp_to_next_level}</span>
+            <span className="text-secondary">{xpPercent}%</span>
+          </div>
+          <div className="h-1 bg-surface-container-high w-full relative">
+            <div className="absolute top-0 left-0 h-full bg-secondary" style={{ width: `${xpPercent}%` }} />
+          </div>
         </div>
-        <p className="text-xs text-text-secondary/40 mt-1 text-right">{100 - profile.level} levels to Monarch</p>
-      </div>
+
+        {/* Monarch bar */}
+        <div className="mt-4 pt-4 border-t border-outline-variant/30">
+          <div className="flex justify-between font-mono text-system-label mb-2">
+            <span className="text-primary">MONARCH AWAKENING</span>
+            <span className="text-primary">{monarchProgress}%</span>
+          </div>
+          <div className="h-1 bg-surface-container-high w-full">
+            <div className="h-full bg-primary" style={{ width: `${Math.min(profile.level, 100)}%` }} />
+          </div>
+        </div>
+      </section>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-4 gap-2 px-4">
         {Object.entries(STAT_LABELS).map(([key, label]) => {
           const val = stats ? (stats as unknown as Record<string, number>)[key] : 0
           const isTargeted = statDelta && statDelta.stat === key
           return (
-            <div key={key} className="relative bg-card border border-border rounded-sm p-3 text-center">
+            <div key={key} className="relative card-gradient border border-outline-variant p-3 text-center">
               {isTargeted && (
-                <span
-                  key={`stat-float-${statDelta.key}`}
-                  className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs text-green-400 font-bold float-up-fade"
-                >
+                <span key={`stat-float-${statDelta.key}`} className="absolute -top-5 left-1/2 -translate-x-1/2 font-mono text-[11px] text-secondary font-bold float-up-fade">
                   +{statDelta.amount}
                 </span>
               )}
-              <p className="text-xs mb-1" style={{ color: STAT_COLORS[key] }}>{label}</p>
-              <p className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-rajdhani)' }}>{val}</p>
+              <p className="font-mono text-[9px] mb-1" style={{ color: STAT_COLORS[key] }}>{label}</p>
+              <p className="font-display text-stat-value text-on-surface">{val}</p>
             </div>
           )
         })}
       </div>
 
       {/* Daily Hunt */}
-      <div id="quests" className="bg-card border border-border rounded-sm p-5">
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-xs tracking-[0.3em] text-text-secondary">DAILY HUNT</p>
-          <div className="flex items-center gap-3">
-            {completedCount > 0 && (
+      <section id="quests" className="px-4">
+        {/* Header */}
+        <div className="mb-4">
+          <div className="flex justify-between items-start">
+            <div>
+              <h2 className="font-display text-headline-md text-on-surface uppercase tracking-wider">DAILY HUNT</h2>
+              <p className="font-mono text-system-label text-outline mt-0.5">
+                {formatHuntDate()} // CYCLE {String(currentCycleNumber).padStart(3, '0')}
+              </p>
+            </div>
+            <div className="flex items-center gap-3 mt-1">
+              {completedCount > 0 && (
+                <button onClick={() => setShowSummary(true)} className="font-mono text-system-label text-outline hover:text-secondary transition-colors">
+                  REPORT
+                </button>
+              )}
               <button
-                onClick={() => setShowSummary(true)}
-                className="text-xs tracking-widest hover:text-highlight-1 transition-colors"
-                style={{ color: '#8D96B8', fontFamily: 'var(--font-share-tech-mono)' }}
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="font-mono text-system-label text-outline hover:text-secondary transition-colors disabled:cursor-not-allowed"
               >
-                VIEW REPORT
+                {isRefreshing ? <span className="inline-block w-2 h-2 rounded-full bg-current animate-pulse align-middle" /> : '↻'}
               </button>
-            )}
-            <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              title="Refresh quests"
-              className="text-xs tracking-widest hover:text-highlight-1 transition-colors disabled:cursor-not-allowed"
-              style={{ color: isRefreshing ? '#4B5563' : '#8D96B8', fontFamily: 'var(--font-share-tech-mono)' }}
-            >
-              {isRefreshing
-                ? <span className="inline-block w-2 h-2 rounded-full bg-current animate-pulse align-middle" />
-                : '↻'}
-            </button>
-            <p className="text-xs text-text-secondary">
-              <span style={{ color: completedCount >= kaizenThreshold ? '#34D399' : '#6CCBFF' }}>
-                {completedCount}
-              </span>
-              <span className="text-text-secondary/40"> / {questList.length}</span>
-            </p>
+            </div>
+          </div>
+
+          {/* Category tabs */}
+          <div className="flex gap-2 mt-4">
+            {(['all', 'physical', 'mental', 'focus'] as HuntTab[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`font-mono text-system-label tracking-widest uppercase px-3 py-1.5 border transition-colors ${
+                  activeTab === tab
+                    ? 'bg-primary-container border-primary-container text-on-primary-container'
+                    : 'border-outline-variant text-outline hover:border-outline hover:text-on-surface'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex justify-between font-mono text-system-label mt-3">
+            <span className="text-outline">RESETS IN {timeUntilReset}</span>
+            <span className="text-outline">
+              MIN: <span className="text-secondary">{kaizenThreshold}</span>
+              {cycleExpiresDays !== null && <span> · {cycleExpiresDays}d LEFT</span>}
+            </span>
           </div>
         </div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs text-text-secondary/40">RESETS IN {timeUntilReset}</p>
-          <p className="text-xs text-text-secondary/40">
-            STREAK REQ: <span className="text-highlight-1">{kaizenThreshold}</span>
-            {cycleExpiresDays !== null && (
-              <span> · CYCLE ENDS: <span className="text-highlight-2">{cycleExpiresDays}d</span></span>
-            )}
-          </p>
-        </div>
 
-        {/* Penalty quest at top of list */}
+        {/* Penalty quests at top */}
         {penaltyQuestList.map((pq) => (
           <PenaltyQuestCard
             key={pq.id}
@@ -510,76 +529,75 @@ export default function DashboardClient({
           />
         ))}
 
-        <div className={`space-y-2.5 ${questsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
-          {regularQuests.map((quest) => (
-            <QuestCard
-              key={quest.id}
-              quest={quest}
-              onToggle={() => handleToggleQuest(quest)}
-              processing={processingIds.has(quest.id)}
-              isFlashing={flashQuestId === quest.id}
-            />
-          ))}
-        </div>
-      </div>
+        {isInitializing ? (
+          <QuestListSkeleton />
+        ) : (
+          <div className={`flex flex-col gap-4 ${questsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+            {regularQuests.length === 0 ? (
+              <p className="text-center py-4 font-mono text-system-label text-outline tracking-widest">
+                {activeTab === 'all' ? 'NO QUESTS — TAP ↻ TO SYNC' : `NO ${activeTab.toUpperCase()} QUESTS TODAY`}
+              </p>
+            ) : regularQuests.map((quest) => (
+              <QuestCard
+                key={quest.id}
+                quest={quest}
+                onToggle={() => handleToggleQuest(quest)}
+                processing={processingIds.has(quest.id)}
+                isFlashing={flashQuestId === quest.id}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Elite Quest */}
-      <EliteQuestCard
-        quest={eliteQuest ?? null}
-        isLocked={isEliteLocked}
-        processingIds={processingIds}
-        flashQuestId={flashQuestId}
-        onToggle={handleToggleQuest}
-      />
+      <div className="px-4">
+        <EliteQuestCard
+          quest={eliteQuest ?? null}
+          isLocked={isEliteLocked}
+          processingIds={processingIds}
+          flashQuestId={flashQuestId}
+          onToggle={handleToggleQuest}
+        />
+      </div>
 
       {/* Streak */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-card border border-border rounded-sm p-4">
-          <p className="text-xs tracking-[0.3em] text-text-secondary mb-1">CURRENT STREAK</p>
-          <p className="text-3xl font-bold text-highlight-1 text-glow" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-            {profile.current_streak}
-          </p>
-          <p className="text-xs text-text-secondary/40 mt-1">DAYS</p>
-        </div>
-        <div className="bg-card border border-border rounded-sm p-4">
-          <p className="text-xs tracking-[0.3em] text-text-secondary mb-1">BEST STREAK</p>
-          <p className="text-3xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-            {profile.best_streak}
-          </p>
-          <p className="text-xs text-text-secondary/40 mt-1">DAYS</p>
-        </div>
+      <div className="px-4">
+        <StreakCard
+          currentStreak={profile.current_streak}
+          bestStreak={profile.best_streak}
+          cycleDaysCompleted={profile.cycle_days_completed ?? 0}
+          user={profile}
+          shieldMessage={shieldMessage ?? undefined}
+        />
       </div>
 
       {/* Cycle info */}
-      <div className="bg-card border border-border rounded-sm p-4">
+      <div className="card-gradient border border-outline-variant p-4 mx-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs tracking-[0.3em] text-text-secondary mb-0.5">CYCLE {currentCycleNumber}</p>
-            <p className="text-xs text-text-secondary/40">
-              Kaizen threshold: complete <span className="text-highlight-1">{kaizenThreshold}</span> quests/day for streak
+            <p className="font-mono text-system-label text-on-surface-variant mb-1">CYCLE {currentCycleNumber}</p>
+            <p className="font-mono text-[10px] text-outline">
+              Kaizen: <span className="text-secondary">{kaizenThreshold}</span> quests/day for streak
             </p>
           </div>
           {cycleExpiresDays !== null && (
-            <p className="text-right">
-              <span className="text-2xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-                {cycleExpiresDays}
-              </span>
-              <span className="text-xs text-text-secondary/40 block">DAYS LEFT</span>
-            </p>
+            <div className="text-right">
+              <span className="font-display text-headline-md text-on-surface">{cycleExpiresDays}</span>
+              <span className="font-mono text-system-label text-outline block">DAYS LEFT</span>
+            </div>
           )}
         </div>
       </div>
 
       {/* Weekly Boss placeholder */}
-      <div className="bg-card border border-border rounded-sm p-5 opacity-60">
+      <div className="card-gradient border border-outline-variant p-5 mx-4 opacity-50">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-2 h-2 rounded-full bg-text-secondary/20" />
-          <p className="text-xs tracking-[0.3em] text-text-secondary">WEEKLY BOSS</p>
-          <span className="text-xs text-text-secondary/40 border border-text-secondary/20 px-2 py-0.5 rounded-sm tracking-widest">
-            LOCKED
-          </span>
+          <span className="material-symbols-outlined text-outline" style={{ fontSize: '16px' }}>lock</span>
+          <p className="font-mono text-system-label text-on-surface-variant">WEEKLY BOSS</p>
+          <span className="font-mono text-[10px] text-outline border border-outline-variant px-2 py-0.5 tracking-widest">LOCKED</span>
         </div>
-        <p className="text-text-secondary/40 text-xs">Elite challenges unlock at rank E.</p>
+        <p className="font-mono text-system-label text-outline">Elite challenges unlock at rank E.</p>
       </div>
 
       {/* Level-up modal */}
@@ -601,8 +619,8 @@ export default function DashboardClient({
       {/* System message */}
       {systemMessage && (
         <div className="fixed bottom-20 left-0 right-0 z-40 flex justify-center px-4 pointer-events-none">
-          <div className="slide-up bg-bg-primary/95 border border-border/60 rounded-sm px-4 py-3 max-w-sm w-full">
-            <p className="text-xs text-text-secondary/80 tracking-wide leading-relaxed" style={{ fontFamily: 'var(--font-share-tech-mono)' }}>
+          <div className="slide-up bg-surface-container border border-outline-variant px-4 py-3 max-w-sm w-full">
+            <p className="font-mono text-system-label text-on-surface-variant leading-relaxed">
               &gt; {systemMessage}
             </p>
           </div>
@@ -633,50 +651,91 @@ function QuestCard({
 }: {
   quest: Quest; onToggle: () => void; processing: boolean; isFlashing?: boolean
 }) {
-  const catColor = CATEGORY_COLORS[quest.category] ?? '#8D96B8'
+  const difficultyLabel =
+    quest.quest_type === 'elite' ? 'ELITE'
+    : quest.xp_reward >= 100 ? 'HARD'
+    : quest.xp_reward >= 60  ? 'MEDIUM'
+    : 'EASY'
+
+  const badgeClass =
+    quest.quest_type === 'elite'
+      ? 'text-tertiary border-tertiary/50 bg-tertiary/5'
+      : quest.xp_reward >= 100
+        ? 'text-error border-error/50 bg-error/5'
+        : quest.xp_reward >= 60
+          ? 'text-tertiary border-tertiary/40 bg-tertiary/5'
+          : 'text-secondary border-secondary/50 bg-secondary/5'
+
+  const categoryIcon = CATEGORY_ICONS[quest.category] ?? 'radio_button_checked'
+
   return (
-    <div
-      className={`relative flex items-center gap-3 p-3.5 border rounded-sm ${
+    <article
+      className={`card-gradient border relative overflow-hidden p-4 flex flex-col gap-3 transition-all ${
         isFlashing
           ? 'quest-complete-flash'
           : quest.is_completed
-            ? 'border-border/30 bg-bg-secondary/30 opacity-50'
-            : 'border-border bg-bg-secondary hover:border-aura-primary/30 transition-all'
+            ? 'border-outline-variant opacity-60'
+            : quest.quest_type === 'elite'
+              ? 'border-tertiary/40 hover:border-tertiary/70'
+              : 'border-outline-variant hover:border-primary-container'
       }`}
     >
-      {/* Checkmark renders from local state only — never waits for server */}
-      <button
-        onClick={onToggle}
-        className={`flex-shrink-0 w-5 h-5 rounded-sm border transition-all ${
-          quest.is_completed ? 'bg-aura-primary border-aura-primary' : 'border-border hover:border-aura-primary'
-        }`}
-      >
-        {quest.is_completed && (
-          <svg viewBox="0 0 16 16" fill="none" className="w-full h-full p-0.5">
-            <path d="M3 8l4 4 6-6" stroke="#E7ECFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
-        {processing && !quest.is_completed && (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="w-2 h-2 rounded-full bg-aura-primary animate-pulse" />
-          </div>
-        )}
-      </button>
-      <div className="flex-1 min-w-0">
-        <p className={`text-sm text-text-primary truncate ${quest.is_completed ? 'line-through text-text-secondary' : ''}`}>
-          {quest.title}
-        </p>
-        {quest.description && (
-          <p className="text-xs text-text-secondary/60 truncate mt-0.5">{quest.description}</p>
-        )}
+      {/* Top row: difficulty badge + icon */}
+      <div className="flex justify-between items-center">
+        <span className={`font-mono text-system-label border px-2 py-0.5 ${badgeClass}`}>
+          {difficultyLabel}
+        </span>
+        <span className="material-symbols-outlined text-outline" style={{ fontSize: '22px', fontVariationSettings: "'FILL' 1" }}>
+          {categoryIcon}
+        </span>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <div className="w-1.5 h-1.5 rounded-full" style={{ background: catColor }} />
-        <span className="text-xs text-text-secondary/60">+{quest.xp_reward}</span>
+
+      {/* Title + description */}
+      <div className="flex items-start gap-3">
+        <div className="flex flex-col gap-1 flex-1 min-w-0">
+          <h3 className={`font-display text-stat-value text-on-surface uppercase ${quest.is_completed ? 'line-through text-on-surface-variant' : ''}`}>
+            {quest.title}
+          </h3>
+          {quest.description && (
+            <p className="font-body text-body-sm text-on-surface-variant leading-relaxed">{quest.description}</p>
+          )}
+        </div>
       </div>
-      {isFlashing && (
-        <span key={quest.id} className="xp-float">+{quest.xp_reward}</span>
+
+      {/* Bottom row: XP earned or complete button */}
+      {quest.is_completed ? (
+        <div className="flex items-center justify-between">
+          <div className="font-mono text-system-label text-secondary">+{quest.xp_reward} XP EARNED</div>
+          <button
+            onClick={onToggle}
+            className="w-7 h-7 border bg-secondary/20 border-secondary flex items-center justify-center transition-all"
+          >
+            <span className="material-symbols-outlined text-secondary" style={{ fontSize: '14px' }}>check</span>
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={onToggle}
+          className="w-full border border-outline-variant/60 hover:border-secondary py-2 font-mono text-system-label text-outline hover:text-secondary transition-all flex items-center justify-center gap-2"
+        >
+          {processing
+            ? <div className="w-3 h-3 rounded-full bg-primary-container animate-pulse" />
+            : <>INITIATE</>
+          }
+        </button>
       )}
+
+      {isFlashing && <span key={quest.id} className="xp-float">+{quest.xp_reward}</span>}
+    </article>
+  )
+}
+
+function QuestListSkeleton() {
+  return (
+    <div className="flex flex-col gap-4">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="h-20 card-gradient border border-outline-variant animate-pulse" style={{ animationDelay: `${i * 0.1}s` }} />
+      ))}
     </div>
   )
 }
@@ -689,35 +748,31 @@ function EliteQuestCard({
 }) {
   if (isLocked) {
     return (
-      <div className="bg-card border border-border rounded-sm p-5 opacity-50">
+      <div className="card-gradient border border-outline-variant p-5 opacity-50">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-2 h-2 rounded-full bg-yellow-500/40" />
-          <p className="text-xs tracking-[0.3em] text-text-secondary">ELITE QUEST</p>
-          <span className="text-xs text-yellow-500/60 border border-yellow-500/20 px-2 py-0.5 rounded-sm tracking-widest">
-            LOCKED
-          </span>
+          <span className="material-symbols-outlined text-outline" style={{ fontSize: '16px' }}>lock</span>
+          <p className="font-mono text-system-label text-on-surface-variant">ELITE QUEST</p>
+          <span className="font-mono text-[10px] text-outline border border-outline-variant px-2 py-0.5 tracking-widest ml-auto">LOCKED</span>
         </div>
-        <p className="text-text-secondary/40 text-xs">Elite quest unlocks at E-Rank. Keep pushing.</p>
+        <p className="font-mono text-system-label text-outline">Elite quest unlocks at E-Rank. Keep pushing.</p>
       </div>
     )
   }
 
   if (!quest) {
     return (
-      <div className="bg-card border border-border rounded-sm p-4 opacity-40">
-        <p className="text-xs tracking-widest text-text-secondary/40">ELITE QUEST LOADING...</p>
+      <div className="card-gradient border border-outline-variant p-4 opacity-40">
+        <p className="font-mono text-system-label text-outline tracking-widest">ELITE QUEST LOADING...</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-card border rounded-sm p-5" style={{ borderColor: '#F59E0B44' }}>
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
-        <p className="text-xs tracking-[0.3em] text-yellow-500">ELITE QUEST</p>
-        <span className="text-xs text-yellow-500/60 border border-yellow-500/20 px-1.5 py-0.5 rounded-sm tracking-widest ml-auto">
-          WEEKLY
-        </span>
+    <div>
+      <div className="flex items-center gap-2 mb-2 px-1">
+        <span className="material-symbols-outlined text-tertiary" style={{ fontSize: '14px', fontVariationSettings: "'FILL' 1" }}>star</span>
+        <p className="font-mono text-system-label text-tertiary">ELITE QUEST</p>
+        <span className="font-mono text-[10px] text-tertiary/60 border border-tertiary/30 px-1.5 py-0.5 tracking-widest ml-auto">WEEKLY</span>
       </div>
       <QuestCard
         quest={quest}
@@ -739,52 +794,40 @@ function PenaltyQuestCard({
   onComplete: () => void
 }) {
   return (
-    <div
-      className="mb-3 p-4 rounded-sm"
-      style={{
-        borderLeft: '3px solid #ff6b6b',
-        background: 'rgba(255,107,107,0.06)',
-        border: '1px solid rgba(255,107,107,0.25)',
-        borderLeftWidth: 3,
-      }}
-    >
-      <p
-        className="text-xs mb-2 tracking-widest"
-        style={{ fontFamily: 'var(--font-share-tech-mono)', color: '#ff6b6b' }}
-      >
-        PENALTY QUEST — Complete this first
-      </p>
-      <div className={`flex items-center gap-3 ${quest.is_completed ? 'opacity-50' : ''}`}>
+    <article className={`mb-4 card-gradient border border-error/40 relative overflow-hidden p-4 flex flex-col gap-3 ${quest.is_completed ? 'opacity-60' : ''}`}>
+      {/* Critical penalty badge */}
+      <div className="flex justify-between items-center">
+        <span className="font-mono text-system-label text-error border border-error/50 bg-error/5 px-2 py-0.5">
+          CRITICAL PENALTY
+        </span>
+        <span className="material-symbols-outlined text-error" style={{ fontSize: '22px', fontVariationSettings: "'FILL' 1" }}>
+          warning
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <h3 className={`font-display text-stat-value text-error uppercase ${quest.is_completed ? 'line-through' : ''}`}>
+          SITREP: {quest.title}
+        </h3>
+        {quest.description && (
+          <p className="font-body text-body-sm text-on-surface-variant leading-relaxed">{quest.description}</p>
+        )}
+      </div>
+
+      {quest.is_completed ? (
+        <div className="font-mono text-system-label text-secondary">PENALTY CLEARED — +{quest.xp_reward} XP</div>
+      ) : (
         <button
           onClick={onComplete}
-          disabled={processing || quest.is_completed}
-          className={`flex-shrink-0 w-5 h-5 rounded-sm border transition-all ${
-            quest.is_completed
-              ? 'bg-red-500 border-red-500'
-              : 'border-red-500/60 hover:border-red-500'
-          }`}
+          disabled={processing}
+          className="w-full border border-error/60 hover:border-error bg-error/5 hover:bg-error/10 py-2 font-mono text-system-label text-error tracking-widest transition-all flex items-center justify-center gap-2"
         >
-          {quest.is_completed && (
-            <svg viewBox="0 0 16 16" fill="none" className="w-full h-full p-0.5">
-              <path d="M3 8l4 4 6-6" stroke="#E7ECFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          )}
-          {processing && (
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            </div>
-          )}
+          {processing
+            ? <div className="w-3 h-3 rounded-full bg-error animate-pulse" />
+            : 'INITIATE'
+          }
         </button>
-        <div className="flex-1 min-w-0">
-          <p className={`text-sm text-text-primary ${quest.is_completed ? 'line-through' : ''}`}>
-            {quest.title}
-          </p>
-          {quest.description && (
-            <p className="text-xs text-text-secondary/60 mt-0.5 leading-relaxed">{quest.description}</p>
-          )}
-        </div>
-        <span className="text-xs text-red-400/60 flex-shrink-0">+{quest.xp_reward} XP</span>
-      </div>
-    </div>
+      )}
+    </article>
   )
 }

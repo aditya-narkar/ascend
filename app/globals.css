@@ -1,6 +1,40 @@
 @import "tailwindcss";
 
 @theme {
+  /* ── New Stitch design system ── */
+  --color-background: #14121a;
+  --color-surface: #14121a;
+  --color-surface-container: #201e27;
+  --color-surface-container-low: #1c1a23;
+  --color-surface-container-high: #2b2932;
+  --color-surface-container-lowest: #0e0d15;
+  --color-surface-variant: #36333d;
+  --color-surface-bright: #3a3841;
+  --color-on-surface: #e5e0ec;
+  --color-on-surface-variant: #c9c4d6;
+  --color-primary: #c9beff;
+  --color-primary-container: #4b2dbd;
+  --color-on-primary: #2f009b;
+  --color-on-primary-container: #beb2ff;
+  --color-primary-fixed: #e6deff;
+  --color-primary-fixed-dim: #c9beff;
+  --color-secondary: #7ed0ff;
+  --color-secondary-container: #309acc;
+  --color-on-secondary: #00344a;
+  --color-tertiary: #ffb693;
+  --color-tertiary-container: #813300;
+  --color-tertiary-fixed-dim: #ffb693;
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+  --color-on-error: #690005;
+  --color-outline: #938ea0;
+  --color-outline-variant: #484554;
+  --color-glow-cyan: #6CCBFF;
+  --color-card-bg-top: #111827;
+  --color-card-bg-bottom: #0B1120;
+  --color-border-card: #4A5280;
+
+  /* ── Legacy tokens (backward compat) ── */
   --color-bg-primary: #070A12;
   --color-bg-secondary: #0B1120;
   --color-aura-primary: #4B2DBD;
@@ -12,8 +46,19 @@
   --color-border: #1A2035;
   --color-card: #0D1526;
 
-  --font-heading: var(--font-rajdhani);
-  --font-mono: var(--font-share-tech-mono);
+  /* ── Font vars ── */
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+  --font-body: var(--font-body);
+  /* Backward compat aliases so old var(--font-rajdhani) inline refs still work */
+  --font-rajdhani: var(--font-display);
+  --font-share-tech-mono: var(--font-mono);
+
+  /* ── Border radius ── */
+  --radius-DEFAULT: 0.125rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.5rem;
+  --radius-full: 0.75rem;
 }
 
 *, *::before, *::after {
@@ -25,179 +70,194 @@ html, body {
 }
 
 body {
-  background-color: #070A12;
-  color: #E7ECFF;
-  font-family: var(--font-share-tech-mono), 'Share Tech Mono', monospace;
+  background-color: #14121a;
+  color: #e5e0ec;
+  font-family: var(--font-body), 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(255, 255, 255, 0.02) 3px,
+    rgba(255, 255, 255, 0.02) 4px
+  );
 }
 
 /* Scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #14121a; }
+::-webkit-scrollbar-thumb { background: #484554; border-radius: 2px; }
+
+/* ── Typography utility classes ── */
+.font-display { font-family: var(--font-display), 'Space Grotesk', sans-serif; }
+.font-mono    { font-family: var(--font-mono), 'JetBrains Mono', monospace; }
+.font-body    { font-family: var(--font-body), 'Inter', system-ui, sans-serif; }
+
+.text-display-lg {
+  font-size: 48px;
+  line-height: 52px;
+  letter-spacing: -0.02em;
+  font-weight: 700;
 }
-::-webkit-scrollbar-track {
-  background: #070A12;
+.text-headline-lg {
+  font-size: 32px;
+  line-height: 40px;
+  letter-spacing: 0.05em;
+  font-weight: 600;
 }
-::-webkit-scrollbar-thumb {
-  background: #1A2035;
-  border-radius: 2px;
+.text-headline-md {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+}
+.text-stat-value {
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 700;
+}
+.text-system-label {
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.2em;
+  font-weight: 500;
+}
+.text-body-sm {
+  font-size: 14px;
+  line-height: 20px;
 }
 
-/* Aura glow effects */
-.aura-glow {
-  box-shadow: 0 0 40px rgba(75, 45, 189, 0.4), 0 0 80px rgba(75, 45, 189, 0.15);
+/* ── Card & glow utilities ── */
+.card-gradient {
+  background: linear-gradient(180deg, #111827 0%, #0B1120 100%);
+}
+.glow-border       { box-shadow: 0 0 4px #4B2DBD; }
+.glow-border-cyan  { border-color: #6CCBFF; box-shadow: 0 0 8px rgba(108,203,255,0.4); }
+.glow-border-error { border-color: #ffb4ab; box-shadow: 0 0 4px #93000a; }
+.btn-glow:hover    { box-shadow: 0 0 10px #6CCBFF; }
+.text-glow         { text-shadow: 0 0 8px rgba(108,203,255,0.5); }
+.level-glow        { text-shadow: 0 0 20px rgba(75,45,189,0.8); }
+
+.scanlines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 3px,
+    rgba(0,0,0,0.2) 3px,
+    rgba(0,0,0,0.2) 4px
+  );
 }
 
-.aura-glow-sm {
-  box-shadow: 0 0 15px rgba(75, 45, 189, 0.3);
+/* Material Symbols base */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'liga';
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
-.highlight-glow {
-  box-shadow: 0 0 20px rgba(108, 203, 255, 0.3);
-}
-
-.text-glow {
-  text-shadow: 0 0 20px rgba(108, 203, 255, 0.6);
-}
-
-/* Scan line effect on cards */
-.scan-line {
-  position: relative;
-  overflow: hidden;
-}
+/* ── Legacy animations (kept for non-redesigned components) ── */
+.aura-glow    { box-shadow: 0 0 40px rgba(75,45,189,0.4), 0 0 80px rgba(75,45,189,0.15); }
+.aura-glow-sm { box-shadow: 0 0 15px rgba(75,45,189,0.3); }
+.highlight-glow { box-shadow: 0 0 20px rgba(108,203,255,0.3); }
+.scan-line { position: relative; overflow: hidden; }
 .scan-line::after {
   content: '';
   position: absolute;
-  top: 0;
-  left: -100%;
-  width: 50%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(108, 203, 255, 0.4), transparent);
+  top: 0; left: -100%;
+  width: 50%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(108,203,255,0.4), transparent);
   animation: scan 4s linear infinite;
 }
 @keyframes scan {
-  0% { left: -100%; top: 0%; }
-  100% { left: 200%; top: 100%; }
+  0%   { left: -100%; top: 0%; }
+  100% { left: 200%;  top: 100%; }
 }
-
-/* Progress bar glow */
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 8px rgba(75, 45, 189, 0.6); }
-  50% { box-shadow: 0 0 20px rgba(108, 203, 255, 0.8); }
+  0%, 100% { box-shadow: 0 0 8px rgba(75,45,189,0.6); }
+  50%       { box-shadow: 0 0 20px rgba(108,203,255,0.8); }
 }
+.xp-bar-fill { animation: pulse-glow 2s ease-in-out infinite; }
 
-.xp-bar-fill {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-/* Fade in animation */
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
+.fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
 
-.fade-in-up {
-  animation: fadeInUp 0.5s ease-out forwards;
-}
-
-/* Flicker animation for reveal */
 @keyframes flicker {
-  0% { opacity: 0; }
-  10% { opacity: 1; }
-  12% { opacity: 0; }
-  14% { opacity: 1; }
-  70% { opacity: 1; }
-  72% { opacity: 0.8; }
-  74% { opacity: 1; }
+  0%   { opacity: 0; }
+  10%  { opacity: 1; }
+  12%  { opacity: 0; }
+  14%  { opacity: 1; }
+  70%  { opacity: 1; }
+  72%  { opacity: 0.8; }
+  74%  { opacity: 1; }
   100% { opacity: 1; }
 }
+.flicker-in { animation: flicker 1.2s ease-in forwards; }
 
-.flicker-in {
-  animation: flicker 1.2s ease-in forwards;
-}
-
-/* Processing dots */
-@keyframes processingDot {
-  0%, 80%, 100% { opacity: 0; }
-  40% { opacity: 1; }
-}
-
-/* Rank badge */
 .rank-badge {
-  font-family: var(--font-rajdhani), 'Rajdhani', sans-serif;
+  font-family: var(--font-display), sans-serif;
   font-weight: 700;
   letter-spacing: 0.1em;
 }
 
-/* Quest completion flash */
 @keyframes questCompleteFlash {
   0%   { border-color: #34D399; box-shadow: 0 0 18px rgba(52,211,153,0.5); background-color: rgba(52,211,153,0.08); }
   60%  { border-color: #34D399; box-shadow: 0 0 10px rgba(52,211,153,0.3); background-color: rgba(52,211,153,0.05); }
-  100% { border-color: rgba(26,32,53,0.3); box-shadow: none; background-color: rgba(11,17,32,0.3); }
+  100% { border-color: rgba(72,69,84,0.3); box-shadow: none; background-color: rgba(17,24,39,0.5); }
 }
-.quest-complete-flash {
-  animation: questCompleteFlash 0.9s ease-out forwards;
-}
+.quest-complete-flash { animation: questCompleteFlash 0.9s ease-out forwards; }
 
-/* Floating stat/XP delta */
 @keyframes floatUpFade {
   0%   { opacity: 1; transform: translateY(0px); }
   70%  { opacity: 1; transform: translateY(-18px); }
   100% { opacity: 0; transform: translateY(-28px); }
 }
-.float-up-fade {
-  animation: floatUpFade 2s ease-out forwards;
-  pointer-events: none;
-}
+.float-up-fade { animation: floatUpFade 2s ease-out forwards; pointer-events: none; }
 
-/* XP number pop on earn */
 @keyframes xpPop {
   0%   { transform: scale(1); }
   40%  { transform: scale(1.18); color: #34D399; }
   100% { transform: scale(1); }
 }
-.xp-pop {
-  animation: xpPop 0.45s ease-out forwards;
-}
+.xp-pop { animation: xpPop 0.45s ease-out forwards; }
 
-/* System message slide up */
 @keyframes slideUp {
   from { transform: translateY(10px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
-.slide-up {
-  animation: slideUp 0.25s ease-out forwards;
-}
+.slide-up { animation: slideUp 0.25s ease-out forwards; }
 
-/* Per-quest XP float on completion */
 @keyframes xpFloat {
   0%   { opacity: 1; transform: translateY(0); }
   100% { opacity: 0; transform: translateY(-30px); }
 }
 .xp-float {
   position: absolute;
-  right: 12px;
-  top: 0;
-  color: #6CCBFF;
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 12px;
-  font-weight: 700;
+  right: 12px; top: 0;
+  color: #7ed0ff;
+  font-family: var(--font-mono), monospace;
+  font-size: 12px; font-weight: 700;
   animation: xpFloat 0.8s ease-out forwards;
   pointer-events: none;
 }
 
-/* Elite unlock banner */
 @keyframes elitePulse {
-  0%, 100% { box-shadow: 0 0 8px rgba(245,158,11,0.3); }
-  50%       { box-shadow: 0 0 20px rgba(245,158,11,0.6); }
+  0%, 100% { box-shadow: 0 0 8px rgba(255,182,147,0.3); }
+  50%       { box-shadow: 0 0 20px rgba(255,182,147,0.6); }
 }
-.elite-unlock-pulse {
-  animation: elitePulse 2s ease-in-out infinite;
-}
+.elite-unlock-pulse { animation: elitePulse 2s ease-in-out infinite; }

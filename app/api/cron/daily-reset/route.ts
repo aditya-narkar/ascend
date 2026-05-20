@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getKaizenThreshold, getRankFromLevel, getXPToNextLevel } from '@/lib/utils'
+import { getKaizenThreshold, getRankFromLevel, getXPToNextLevel, formatTodayDate } from '@/lib/utils'
+import { getUTCYesterdayString } from '@/lib/date'
+import { updateStreak } from '@/lib/streakShield'
 
 export async function GET(req: Request) {
   const auth = req.headers.get('authorization')
@@ -10,8 +12,8 @@ export async function GET(req: Request) {
 
   const supabase = createAdminClient()
 
-  const today = new Date().toISOString().split('T')[0]
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+  const today = formatTodayDate()
+  const yesterday = getUTCYesterdayString()
 
   const { data: users } = await supabase
     .from('users')
@@ -120,29 +122,33 @@ export async function GET(req: Request) {
 
     const threshold = getKaizenThreshold(activeSel?.cycle_number ?? 1)
 
-    // ── 5. Streak calculation ───────────────────────────────
-    let newStreak = user.current_streak
-    let newBest = user.best_streak
-    let streakMaintained = false
-    let weakDay = false
+    // ── 5. Streak + shield update ───────────────────────────
+    const result = await updateStreak(user.id, completed, threshold, supabase)
+    const shieldConsumed = result?.shieldConsumed ?? false
+    const shieldAwarded = result?.shieldAwarded ?? false
 
-    if (completed === 0) {
-      newStreak = 0
-    } else if (completed >= threshold) {
-      newStreak = user.last_active_date === yesterday ? user.current_streak + 1 : 1
-      if (newStreak > newBest) newBest = newStreak
-      streakMaintained = true
-    } else {
-      weakDay = true
+    const streakMaintained = completed >= threshold || shieldConsumed
+    const weakDay = completed > 0 && completed < threshold
+
+    if (shieldConsumed) {
+      await supabase
+        .from('users')
+        .update({ pending_system_message: 'STREAK SHIELD CONSUMED. FAILURE ABSORBED. ONE CHANCE GIVEN.' })
+        .eq('id', user.id)
+    } else if (shieldAwarded) {
+      await supabase
+        .from('users')
+        .update({ pending_system_message: 'STREAK SHIELD EARNED. 21 DAYS OF CONSISTENCY ACKNOWLEDGED. SHIELD ACTIVE.' })
+        .eq('id', user.id)
     }
 
-    // ── 6. Penalty calculation ──────────────────────────────
+    // ── 6. Penalty calculation (skip if shield absorbed the day) ──
     let penaltyTriggered = false
     let newPenaltyTier = user.penalty_tier
     let newConsecutiveFailures = user.consecutive_failures
     const isInPenaltyZone = user.penalty_tier === 3
 
-    if (!isInPenaltyZone) {
+    if (!isInPenaltyZone && !shieldConsumed) {
       if (completed === 0 || (completed > 0 && completed < 2)) {
         // ── Tier 2: hard failure ──
         penaltyTriggered = true
@@ -177,7 +183,6 @@ export async function GET(req: Request) {
           )
         } else {
           newPenaltyTier = 2
-          // Insert penalty quest for today
           await supabase.from('penalty_quests').insert({
             user_id: user.id,
             title: 'Face the Debt',
@@ -223,11 +228,8 @@ export async function GET(req: Request) {
       }
     }
 
-    // ── 7. Persist streak + penalty tier ────────────────────
+    // ── 7. Persist penalty tier (streak already written by updateStreak) ──
     const updatePayload: Record<string, unknown> = {
-      current_streak: newStreak,
-      best_streak: newBest,
-      last_active_date: today,
       consecutive_failures: newConsecutiveFailures,
     }
     if (newPenaltyTier !== user.penalty_tier && newPenaltyTier !== 3) {
@@ -257,7 +259,6 @@ export async function GET(req: Request) {
       .eq('is_active', true)
       .gte('expires_date', today)
 
-    // Skip generation if today's quests already exist
     const { count: existingCount } = await supabase
       .from('quests')
       .select('*', { count: 'exact', head: true })

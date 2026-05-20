@@ -34,6 +34,11 @@ export interface UserProfile {
   penalty_zone_started_at: string | null
   penalty_zone_active_time: number
   penalty_zone_completed: boolean
+  streak_shield_active: boolean
+  streak_shield_used_date: string | null
+  last_shield_earned_date: string | null
+  cycle_days_completed: number
+  pending_system_message: string | null
 }
 
 export interface PenaltyQuest {
