@@ -74,6 +74,10 @@ module.exports = withPWA({
         source: '/admin/:path*',
         headers: [{ key: 'X-Robots-Tag', value: 'noindex' }],
       },
+      {
+        source: '/manifest.json',
+        headers: [{ key: 'Content-Type', value: 'application/manifest+json' }],
+      },
     ]
   },
 })
