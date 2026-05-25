@@ -15,6 +15,7 @@ import DailyCompletionSummary from './DailyCompletionSummary'
 import PenaltyZone from './PenaltyZone'
 import CompletionRing from './CompletionRing'
 import StreakCard from './StreakCard'
+import { getUTCDateString, getUTCYesterdayString } from '@/lib/date'
 import type { UserProfile, Stats, Quest, QuestPool, CycleReportData, PoolCategory, PenaltyQuest } from '@/lib/types'
 
 const STAT_LABELS: Record<string, string> = {
@@ -88,6 +89,9 @@ export default function DashboardClient({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isInitializing, setIsInitializing] = useState(quests.length === 0 && !needsSelectionPhase)
   const [activeTab, setActiveTab] = useState<HuntTab>('all')
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false)
+  const [showNotificationBanner, setShowNotificationBanner] = useState(false)
+  const penaltyCheckRan = useRef(false)
 
   // ── Per-quest processing lock helpers ───────────────────────
   const addProcessing = useCallback((id: string) => {
@@ -116,19 +120,39 @@ export default function DashboardClient({
     return () => { supabase.removeChannel(channel) }
   }, [profile.id])
 
-  // Setup push notifications silently after login
+  // ── Notification permission + SW setup ──────────────────────
   useEffect(() => {
-    async function setup() {
-      if (typeof window === 'undefined') return
-      if (!('Notification' in window)) return
-      if (Notification.permission !== 'granted') return
-      try {
-        await registerServiceWorker()
-        const sub = await subscribeUserToPush()
-        if (sub) await saveNotificationSubscription(sub.toJSON() as Record<string, unknown>)
-      } catch {}
+    if (typeof window === 'undefined' || !('Notification' in window)) return
+
+    // Debug: log SW and subscription status
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready
+        .then((reg) => {
+          console.log('[ASCEND] SW registered:', reg)
+          console.log('[ASCEND] SW scope:', reg.scope)
+          reg.pushManager.getSubscription().then((sub) => {
+            console.log('[ASCEND] Push subscription:', sub ? 'EXISTS' : 'NONE')
+            if (sub) console.log('[ASCEND] Subscription endpoint:', sub.endpoint)
+          })
+        })
+        .catch((err) => console.error('[ASCEND] SW error:', err))
     }
-    setup()
+    console.log('[ASCEND] Notification permission:', Notification.permission)
+
+    if (Notification.permission === 'granted') {
+      setNotificationsEnabled(true)
+      // Silently re-subscribe (handles reinstalls / new push keys)
+      async function setup() {
+        try {
+          await registerServiceWorker()
+          const sub = await subscribeUserToPush()
+          if (sub) await saveNotificationSubscription(sub.toJSON() as Record<string, unknown>)
+        } catch {}
+      }
+      setup()
+    } else if (Notification.permission === 'default') {
+      setShowNotificationBanner(true)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -272,6 +296,81 @@ export default function DashboardClient({
     }
   }, [processingIds, questList, kaizenThreshold, addProcessing, removeProcessing, profile])
 
+  // ── Enable notifications from user gesture ──────────────────
+  async function handleEnableNotifications() {
+    try {
+      console.log('[ASCEND] VAPID public key exists:', !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
+      console.log('[ASCEND] VAPID key starts with:', process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.substring(0, 20))
+
+      const permission = await Notification.requestPermission()
+      console.log('[ASCEND] Permission result:', permission)
+      if (permission !== 'granted') return
+
+      await registerServiceWorker()
+      const sub = await subscribeUserToPush()
+      console.log('[ASCEND] Subscription created:', sub)
+      if (sub) {
+        await saveNotificationSubscription(sub.toJSON() as Record<string, unknown>)
+        console.log('[ASCEND] Subscription saved successfully')
+      }
+      setNotificationsEnabled(true)
+      setShowNotificationBanner(false)
+    } catch (error) {
+      console.error('[ASCEND] Notification setup error:', error)
+    }
+  }
+
+  // ── Client-side daily penalty check (cron fallback) ─────────
+  async function checkAndApplyDailyPenalty() {
+    // Skip if already in penalty zone or in selection phase
+    if (profile.penalty_zone_active || needsSelectionPhase) return
+    // Skip brand-new accounts (< 2 days old) — nothing to penalise yet
+    const daysSinceCreation = Math.floor(
+      (Date.now() - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24),
+    )
+    if (daysSinceCreation < 2) return
+    const today = getUTCDateString()
+    const yesterday = getUTCYesterdayString()
+    // Skip if already active today (quests completed)
+    if (profile.last_active_date === today) return
+
+    const supabase = createBrowserClient()
+    const { count } = await supabase
+      .from('quests')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', profile.id)
+      .eq('date_assigned', yesterday)
+      .eq('is_completed', true)
+
+    if (count === null) return // query failed — skip
+    if (count > 0) return      // quests were completed yesterday — no penalty
+
+    const newFailures = (profile.consecutive_failures ?? 0) + 1
+    console.log('[ASCEND] Penalty check: consecutive_failures →', newFailures)
+
+    const updates: Record<string, unknown> = { consecutive_failures: newFailures }
+
+    if (newFailures >= 3) {
+      updates.penalty_tier = 3
+      updates.penalty_zone_active = true
+      updates.penalty_zone_started_at = new Date().toISOString()
+      console.log('[ASCEND] Penalty Zone activated')
+    } else {
+      updates.penalty_tier = newFailures >= 2 ? 2 : 1
+    }
+
+    await supabase.from('users').update(updates).eq('id', profile.id)
+    router.refresh()
+  }
+
+  // Run penalty check once on mount
+  useEffect(() => {
+    if (penaltyCheckRan.current) return
+    penaltyCheckRan.current = true
+    checkAndApplyDailyPenalty()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   async function handleCompletePenaltyQuest(pq: PenaltyQuest) {
     if (penaltyProcessingId) return
     setPenaltyProcessingId(pq.id)
@@ -394,6 +493,63 @@ export default function DashboardClient({
       </header>
 
     <div className="space-y-4 pb-20">
+
+      {/* Notification permission banner */}
+      {showNotificationBanner && !notificationsEnabled && (
+        <div className="mx-4 mt-4 card-gradient border border-primary-container p-4 flex items-center justify-between gap-4">
+          <div>
+            <div className="font-mono text-system-label text-secondary mb-1">ENABLE SYSTEM ALERTS</div>
+            <p className="font-mono text-[10px] text-on-surface-variant">
+              Allow notifications to receive quest reminders and penalty alerts.
+            </p>
+          </div>
+          <button
+            onClick={handleEnableNotifications}
+            className="px-4 py-2 bg-primary-container border border-[#6B3FD4] font-mono text-system-label text-on-primary-container uppercase tracking-widest whitespace-nowrap hover:shadow-[0_0_10px_#6CCBFF] transition-all text-[10px]"
+          >
+            ENABLE
+          </button>
+        </div>
+      )}
+
+      {/* DEV: test notification + penalty zone trigger */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mx-4 flex gap-2 flex-wrap">
+          <button
+            onClick={() => {
+              if (Notification.permission === 'granted') {
+                new Notification('ASCEND TEST', {
+                  body: 'System notification working.',
+                  icon: '/icons/icon-192x192.png',
+                })
+              } else {
+                console.log('[ASCEND] Permission not granted:', Notification.permission)
+              }
+            }}
+            className="font-mono text-[10px] text-secondary border border-secondary/40 px-3 py-1"
+          >
+            TEST NOTIF
+          </button>
+          <button
+            onClick={async () => {
+              const supabase = createBrowserClient()
+              await supabase
+                .from('users')
+                .update({
+                  consecutive_failures: 3,
+                  penalty_tier: 3,
+                  penalty_zone_active: true,
+                  penalty_zone_started_at: new Date().toISOString(),
+                })
+                .eq('id', profile.id)
+              window.location.reload()
+            }}
+            className="font-mono text-[10px] text-error border border-error/40 px-3 py-1"
+          >
+            TEST PENALTY ZONE
+          </button>
+        </div>
+      )}
 
       {/* Identity card */}
       <section className="card-gradient border border-outline-variant p-6 relative overflow-hidden mx-4 mt-4">
