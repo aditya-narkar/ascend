@@ -31,7 +31,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 
 export async function subscribeUserToPush(): Promise<PushSubscription | null> {
   if (typeof window === 'undefined') return null
-  const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim()
   if (!vapidKey) return null
   try {
     const registration = await navigator.serviceWorker.ready
