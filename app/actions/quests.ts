@@ -450,7 +450,7 @@ export async function completeQuest(questId: string): Promise<QuestCompletionRes
 
   // XP + level calculation
   let newCurrentXP = profile.current_xp + quest.xp_reward
-  let newTotalXP = profile.total_xp + quest.xp_reward
+  const newTotalXP = profile.total_xp + quest.xp_reward
   let newLevel = profile.level
   let newXPToNext = profile.xp_to_next_level
   let leveledUp = false
@@ -482,15 +482,39 @@ export async function completeQuest(questId: string): Promise<QuestCompletionRes
   const cycleNumber = activeSelection?.cycle_number ?? 1
   const threshold = getKaizenThreshold(cycleNumber)
 
-  const { count: completedToday } = await supabase
-    .from('quests')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .eq('date_assigned', today)
-    .eq('is_completed', true)
+  const [{ count: completedToday }, { count: completedRegularToday }, { count: totalRegularToday }] =
+    await Promise.all([
+      supabase
+        .from('quests')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('date_assigned', today)
+        .eq('is_completed', true),
+      supabase
+        .from('quests')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('date_assigned', today)
+        .eq('is_completed', true)
+        .neq('quest_type', 'elite'),
+      supabase
+        .from('quests')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('date_assigned', today)
+        .neq('quest_type', 'elite'),
+    ])
 
   // +1 because we just marked the quest complete
   const completedCount = (completedToday ?? 0) + 1
+  const regularCompletedCount = quest.quest_type === 'elite'
+    ? completedRegularToday ?? 0
+    : completedRegularToday ?? 1
+  const previousRegularCompletedCount =
+    quest.quest_type === 'elite'
+      ? regularCompletedCount
+      : Math.max(0, regularCompletedCount - 1)
+  const totalRegularCount = totalRegularToday ?? 0
 
   let newStreak = profile.current_streak
   let newBestStreak = profile.best_streak
@@ -569,12 +593,42 @@ export async function completeQuest(questId: string): Promise<QuestCompletionRes
   )
 
   // Push notifications — fire and forget, don't block response
+  if (
+    quest.quest_type !== 'elite' &&
+    previousRegularCompletedCount < threshold &&
+    regularCompletedCount >= threshold
+  ) {
+    sendPushNotification({
+      user_id: user.id,
+      title: 'Kaizen Threshold Secured',
+      body: 'Today is protected. You crossed the minimum quest threshold for streak progress.',
+      tag: 'kaizen-threshold',
+      url: '/dashboard',
+    }).catch(() => {})
+  }
+
+  if (
+    quest.quest_type !== 'elite' &&
+    totalRegularCount > 0 &&
+    previousRegularCompletedCount < totalRegularCount &&
+    regularCompletedCount === totalRegularCount
+  ) {
+    sendPushNotification({
+      user_id: user.id,
+      title: 'Board Cleared',
+      body: 'Every regular quest on today\'s board is complete. The hunt is fully cleared.',
+      tag: 'all-clear',
+      url: '/dashboard',
+    }).catch(() => {})
+  }
+
   if (leveledUp && newRank) {
     sendPushNotification({
       user_id: user.id,
       title: 'LEVEL UP',
       body: `You are now Level ${newLevel}. ${newRank} Hunter. The system acknowledges your growth.`,
       tag: 'level-up',
+      url: '/stats',
     }).catch(() => {})
   }
 

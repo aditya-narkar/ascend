@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { sendPushNotification } from '@/app/actions/notifications'
 import { getRankFromLevel, getXPToNextLevel } from '@/lib/utils'
 import { getUTCDateString } from '@/lib/date'
 
@@ -133,19 +134,28 @@ export async function completePenaltyQuest(penaltyQuestId: string) {
     .eq('id', user.id)
     .single()
 
+  let leveledUp = false
+  let newLevel = profile?.level ?? 1
+  let newRank = getRankFromLevel(newLevel)
+  let previousRank = newRank
+  let rankChanged = false
+
   if (profile) {
     let newCurrentXP = profile.current_xp + pq.xp_reward
-    let newTotalXP = profile.total_xp + pq.xp_reward
-    let newLevel = profile.level
+    const newTotalXP = profile.total_xp + pq.xp_reward
+    newLevel = profile.level
     let newXPToNext = profile.xp_to_next_level
+    previousRank = getRankFromLevel(profile.level)
 
     while (newCurrentXP >= newXPToNext) {
       newCurrentXP -= newXPToNext
       newLevel++
       newXPToNext = getXPToNextLevel(newLevel)
+      leveledUp = true
     }
 
-    const newRank = getRankFromLevel(newLevel)
+    newRank = getRankFromLevel(newLevel)
+    rankChanged = newRank !== previousRank
 
     await supabase
       .from('users')
@@ -171,8 +181,28 @@ export async function completePenaltyQuest(penaltyQuestId: string) {
     })
   } catch {}
 
+  sendPushNotification({
+    user_id: user.id,
+    title: 'Penalty Cleared',
+    body: 'Recovery task complete. The active penalty objective has been cleared.',
+    tag: 'penalty-cleared',
+    url: '/dashboard',
+  }).catch(() => {})
+
+  if (leveledUp) {
+    sendPushNotification({
+      user_id: user.id,
+      title: 'LEVEL UP',
+      body: rankChanged
+        ? `You reached Level ${newLevel} and advanced to Rank ${newRank}. Open Stats to review the promotion.`
+        : `You reached Level ${newLevel}. Rank ${newRank} has been recorded in the system.`,
+      tag: 'level-up',
+      url: '/stats',
+    }).catch(() => {})
+  }
+
   revalidatePath('/dashboard')
-  return { success: true }
+  return { success: true, leveledUp, newLevel, newRank, previousRank, rankChanged }
 }
 
 export async function updatePenaltyActiveTime(seconds: number) {

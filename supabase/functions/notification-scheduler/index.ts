@@ -16,17 +16,24 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
 )
 
-webpush.setVapidDetails(
-  vapidSubject,
-  vapidPublicKey,
-  vapidPrivateKey,
-)
+function configureWebPush() {
+  if (!vapidPublicKey || !vapidPrivateKey || !vapidEmailRaw) {
+    throw new Error('Missing VAPID configuration')
+  }
+
+  webpush.setVapidDetails(
+    vapidSubject,
+    vapidPublicKey,
+    vapidPrivateKey,
+  )
+}
 
 async function sendToUser(
   userId: string,
   title: string,
   body: string,
   tag: string,
+  url?: string,
   renotify = false,
 ) {
   const { data: sub } = await supabase
@@ -38,20 +45,17 @@ async function sendToUser(
   if (!sub?.subscription) return
 
   try {
+    configureWebPush()
     await webpush.sendNotification(
       sub.subscription,
-      JSON.stringify({ title, body, tag, renotify }),
+      JSON.stringify({ title, body, tag, url, renotify }),
     )
   } catch {
     // Ignore send failures (stale subscription etc)
   }
 }
 
-Deno.serve(async (_req: Request) => {
-  if (!vapidPublicKey || !vapidPrivateKey || !vapidEmailRaw) {
-    return new Response(JSON.stringify({ ok: false, error: 'Missing VAPID configuration' }), { status: 500 })
-  }
-
+Deno.serve(async () => {
   const now = new Date()
   const hour = now.getUTCHours()
   const today = now.toISOString().split('T')[0]
@@ -114,6 +118,7 @@ Deno.serve(async (_req: Request) => {
             'Penalty Zone Active',
             `${Math.ceil(hoursRemaining)} hours remaining. Complete or face consequences.`,
             'penalty-zone',
+            '/dashboard',
             true,
           )
           sent++
@@ -133,6 +138,7 @@ Deno.serve(async (_req: Request) => {
         'System Active',
         `Your daily hunt is waiting. ${totalQuests ?? 0} quests assigned. Begin.`,
         'morning-reminder',
+        '/dashboard',
       )
       sent++
     } else if (hour === 14 && done < Math.floor(threshold / 2)) {
@@ -147,6 +153,7 @@ Deno.serve(async (_req: Request) => {
         `Hunter ${name}`,
         `${remaining} quests remaining. Momentum builds now. Don't fall behind.`,
         'midday-reminder',
+        '/dashboard',
       )
       sent++
     } else if (hour === 20 && done < threshold) {
@@ -161,6 +168,7 @@ Deno.serve(async (_req: Request) => {
         '3 Hours Remaining',
         `${remaining} quests unresolved. The system is watching. Finish the hunt.`,
         'evening-reminder',
+        '/dashboard',
       )
       sent++
     } else if (hour === 21 && user.current_streak > 3 && done < threshold) {
@@ -169,6 +177,7 @@ Deno.serve(async (_req: Request) => {
         'Streak At Risk',
         `${user.current_streak} day streak. Don't let it end tonight. One quest at a time.`,
         'streak-reminder',
+        '/dashboard',
       )
       sent++
     }

@@ -38,6 +38,15 @@ Core concepts:
 - A streak is only maintained if the user hits a cycle-specific Kaizen threshold.
 - Weak days and failed days trigger escalating penalties.
 
+## Web-only architecture
+
+The repo is now web-only again.
+
+- The product is the Next.js web/PWA app in the repo root.
+- The Expo native app, its `native/` workspace, and root Expo/EAS build configs have been removed.
+- Keep future mobile work out of this repo unless the native app is intentionally reintroduced.
+- Do not add native build commands, Expo env vars, or EAS config back as part of ordinary website work.
+
 ## Main user flow
 
 ### 1. Authentication
@@ -343,16 +352,23 @@ Notification flow:
 
 - browser requests permission
 - service worker registers
-- browser creates push subscription using `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+- browser creates a Web Push subscription using `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
 - subscription is saved to `push_subscriptions`
 - server action or edge scheduler calls `send-notification`
-- edge function loads subscription and sends Web Push payload
+- edge function loads the subscription and sends a Web Push payload
 
 Important configuration detail:
 
 - browser subscription uses `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
-- edge functions now accept `VAPID_PUBLIC_KEY` and also fall back to `NEXT_PUBLIC_VAPID_PUBLIC_KEY` if the server-only copy is missing
+- edge functions accept `VAPID_PUBLIC_KEY` and also fall back to `NEXT_PUBLIC_VAPID_PUBLIC_KEY` if the server-only copy is missing
 - `VAPID_EMAIL` may be stored either as `your@email.com` or `mailto:your@email.com`; the edge functions normalize it before calling `web-push`
+- `push_subscriptions.subscription` is expected to be a browser Web Push subscription object for the PWA
+
+Important `send-notification` edge-function behavior:
+
+- service-role requests can send notifications to any user for cron and system flows
+- VAPID config is required for Web Push sends
+- stale or invalid browser subscriptions should be treated as best-effort failures and cleaned up when safe
 
 Scheduled reminder behavior in `notification-scheduler`:
 
@@ -525,11 +541,14 @@ Defined in [`.env.local.example`](/C:/Users/Aditya/project/ascend/.env.local.exa
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_ANON_KEY`
 - `CRON_SECRET`
 - `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
 - `VAPID_PUBLIC_KEY`
 - `VAPID_PRIVATE_KEY`
 - `VAPID_EMAIL`
+
+There is no native Expo env contract anymore; `EXPO_PUBLIC_*`, EAS project IDs, bundle IDs, and Android package settings were removed with the native app.
 
 ## Deployment and scheduled jobs
 
@@ -569,6 +588,7 @@ Avoid flattening this into generic SaaS styling unless explicitly requested.
 ## Known implementation quirks and risks
 
 - `README.md` is still the default create-next-app README and does not describe the real project.
+- The Expo native app and root Expo/EAS configs were removed; the repo should remain focused on the Next.js website/PWA unless native is intentionally reintroduced.
 - There are several visible mojibake characters in file output when viewed via PowerShell, likely from encoding/display mismatch rather than intended copy changes.
 - Elite quest assignment logic is inconsistent between `generateDailyQuests` and `ensureTodayQuests`.
 - `cycles.total_days_active` appears in the schema and UI report types, but I did not find active update logic for it.

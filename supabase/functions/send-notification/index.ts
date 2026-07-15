@@ -16,19 +16,29 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
 )
 
-webpush.setVapidDetails(
-  vapidSubject,
-  vapidPublicKey,
-  vapidPrivateKey,
-)
+const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+
+function configureWebPush() {
+  if (!vapidPublicKey || !vapidPrivateKey || !vapidEmailRaw) {
+    throw new Error('Missing VAPID configuration')
+  }
+
+  webpush.setVapidDetails(
+    vapidSubject,
+    vapidPublicKey,
+    vapidPrivateKey,
+  )
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 })
   }
 
-  if (!vapidPublicKey || !vapidPrivateKey || !vapidEmailRaw) {
-    return new Response('Missing VAPID configuration', { status: 500 })
+  const authHeader = req.headers.get('Authorization')
+
+  if (authHeader !== `Bearer ${serviceRoleKey}`) {
+    return new Response('Unauthorized', { status: 401 })
   }
 
   const { user_id, title, body, tag, url, renotify } = await req.json()
@@ -48,6 +58,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    configureWebPush()
     await webpush.sendNotification(
       sub.subscription,
       JSON.stringify({ title, body, tag, url, renotify }),
