@@ -1,6 +1,6 @@
-const sharp = require('sharp')
-const fs = require('fs')
-const path = require('path')
+import fs from 'node:fs'
+import path from 'node:path'
+import sharp from 'sharp'
 
 const sizes = [72, 96, 128, 144, 152, 192, 384, 512]
 

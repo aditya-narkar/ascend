@@ -53,14 +53,15 @@ export default async function StatsPage() {
   let completionRate: number | null = null
   let daysRemaining: number | null = null
   let cycleNumber: number | null = null
+  const nowMs = new Date().getTime()
 
   if (activeSel) {
     cycleNumber = activeSel.cycle_number
     daysRemaining = Math.max(0, Math.ceil(
-      (new Date(activeSel.expires_date).getTime() - Date.now()) / 86400000
+      (new Date(activeSel.expires_date).getTime() - nowMs) / 86400000
     ))
     const daysElapsed = Math.max(1, Math.floor(
-      (Date.now() - new Date(activeSel.selected_date).getTime()) / 86400000
+      (nowMs - new Date(activeSel.selected_date).getTime()) / 86400000
     ))
     const { data: streakDays } = await supabase
       .from('daily_summary').select('id').eq('user_id', user.id)
@@ -73,7 +74,7 @@ export default async function StatsPage() {
   const xpPercent = Math.min(100, Math.round((profile.current_xp / profile.xp_to_next_level) * 100))
   const statValues = stats as unknown as Record<string, number>
 
-  const daysSinceJoin = Math.floor((Date.now() - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24)) + 1
+  const daysSinceJoin = Math.floor((nowMs - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24)) + 1
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 space-y-4 pb-24">

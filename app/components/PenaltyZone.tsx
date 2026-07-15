@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { completePenaltyZone, failPenaltyZone, updatePenaltyActiveTime } from '@/app/actions/penalty'
 import { sendLocalNotification } from '@/lib/notifications'
@@ -31,12 +31,38 @@ export default function PenaltyZone({ startedAt, initialActiveTime }: Props) {
   const [timerResetMsg, setTimerResetMsg] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const activeSecondsRef = useRef(activeSeconds)
-  activeSecondsRef.current = activeSeconds
+  const [nowMs, setNowMs] = useState(() => new Date().getTime())
 
   const isRestTime = (() => {
     const h = new Date().getHours()
     return h >= 23 || h < 7
   })()
+
+  const handleComplete = useCallback(async () => {
+    if (isProcessing) return
+    setIsProcessing(true)
+    setCompleted(true)
+    await completePenaltyZone()
+    router.refresh()
+  }, [isProcessing, router])
+
+  const handleFail = useCallback(async (msg?: string) => {
+    if (isProcessing) return
+    setIsProcessing(true)
+    setFailed(true)
+    const result = await failPenaltyZone()
+    setFailMsg(msg ?? result?.message ?? 'Penalty Zone failed.')
+    router.refresh()
+  }, [isProcessing, router])
+
+  useEffect(() => {
+    activeSecondsRef.current = activeSeconds
+  }, [activeSeconds])
+
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(new Date().getTime()), 1000)
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => {
     if (completed || failed) return
@@ -55,19 +81,21 @@ export default function PenaltyZone({ startedAt, initialActiveTime }: Props) {
   }, [completed, failed])
 
   useEffect(() => {
-    if (activeSeconds >= REQUIRED_SECONDS && !completed && !failed) handleComplete()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSeconds])
+    if (activeSeconds < REQUIRED_SECONDS || completed || failed) return
+    const timer = setTimeout(() => { void handleComplete() }, 0)
+    return () => clearTimeout(timer)
+  }, [activeSeconds, completed, failed, handleComplete])
 
   useEffect(() => {
     const check = () => {
-      if (!completed && !failed && Date.now() >= deadline) handleFail('Penalty Zone timed out.')
+      if (!completed && !failed && new Date().getTime() >= deadline) {
+        setTimeout(() => { void handleFail('Penalty Zone timed out.') }, 0)
+      }
     }
     check()
     const id = setInterval(check, 60000)
     return () => clearInterval(id)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [completed, failed])
+  }, [completed, deadline, failed, handleFail])
 
   useEffect(() => {
     const onVisibility = () => {
@@ -83,25 +111,8 @@ export default function PenaltyZone({ startedAt, initialActiveTime }: Props) {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [completed, failed])
 
-  async function handleComplete() {
-    if (isProcessing) return
-    setIsProcessing(true)
-    setCompleted(true)
-    await completePenaltyZone()
-    router.refresh()
-  }
-
-  async function handleFail(msg?: string) {
-    if (isProcessing) return
-    setIsProcessing(true)
-    setFailed(true)
-    const result = await failPenaltyZone()
-    setFailMsg(msg ?? result?.message ?? 'Penalty Zone failed.')
-    router.refresh()
-  }
-
   const progressPct = Math.min(100, Math.round((activeSeconds / REQUIRED_SECONDS) * 100))
-  const timeRemaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+  const timeRemaining = Math.max(0, Math.ceil((deadline - nowMs) / 1000))
 
   if (completed) {
     return (

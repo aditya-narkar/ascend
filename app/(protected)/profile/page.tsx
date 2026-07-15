@@ -26,10 +26,6 @@ export default async function ProfilePage() {
   const cyclesCompleted = cyclesRes.count ?? 0
   const hadPenalty = (penaltyRes.count ?? 0) > 0
 
-  const daysSinceJoin = Math.floor(
-    (Date.now() - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24)
-  ) + 1
-
   const rankIndex = RANK_ORDER.indexOf(profile.rank as typeof RANK_ORDER[number])
 
   const TITLES = [

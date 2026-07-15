@@ -14,9 +14,16 @@ export default function InstallPrompt() {
   const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = []
+    const defer = (callback: () => void, delay = 0) => {
+      const timer = setTimeout(callback, delay)
+      timers.push(timer)
+      return timer
+    }
+
     if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true)
-      return
+      defer(() => setIsInstalled(true))
+      return () => timers.forEach(clearTimeout)
     }
 
     const dismissed = localStorage.getItem('installPromptDismissed')
@@ -26,7 +33,7 @@ export default function InstallPrompt() {
     }
 
     const ios = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase())
-    setIsIOS(ios)
+    defer(() => setIsIOS(ios))
 
     const handler = (e: Event) => {
       e.preventDefault()
@@ -37,11 +44,14 @@ export default function InstallPrompt() {
     window.addEventListener('beforeinstallprompt', handler)
 
     if (ios) {
-      const timer = setTimeout(() => setIsVisible(true), 30000)
-      return () => clearTimeout(timer)
+      defer(() => setIsVisible(true), 30000)
+      return () => timers.forEach(clearTimeout)
     }
 
-    return () => window.removeEventListener('beforeinstallprompt', handler)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler)
+      timers.forEach(clearTimeout)
+    }
   }, [])
 
   const handleInstall = async () => {

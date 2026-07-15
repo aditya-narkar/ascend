@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { saveQuestSelections } from '@/app/actions/quests'
 import { useRouter } from 'next/navigation'
 import type { QuestPool, PoolCategory } from '@/lib/types'

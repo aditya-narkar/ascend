@@ -1,4 +1,11 @@
 import { getUTCDateString } from '@/lib/date'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { QuestPool } from '@/lib/types'
+
+type SelectionWithPool = {
+  quest_pool_id: string
+  quest_pools: QuestPool | null
+}
 
 // Per-user module-level guards — survive within one server worker process.
 // The DB unique constraint on (user_id, quest_pool_id, date_assigned) is the
@@ -6,7 +13,7 @@ import { getUTCDateString } from '@/lib/date'
 const generating = new Set<string>()
 const generatedOn = new Map<string, string>()  // userId → date
 
-export async function ensureTodayQuests(userId: string, supabase: any): Promise<void> {
+export async function ensureTodayQuests(userId: string, supabase: SupabaseClient): Promise<void> {
   const today = getUTCDateString()
 
   if (generatedOn.get(userId) === today) return
@@ -39,20 +46,21 @@ export async function ensureTodayQuests(userId: string, supabase: any): Promise<
       .eq('user_id', userId)
       .eq('is_active', true)
 
-    if (!selections || selections.length === 0) return
+    const activeSelections = (selections ?? []) as SelectionWithPool[]
+    if (activeSelections.length === 0) return
 
-    const questsToInsert = selections
-      .filter((sel: any) => sel.quest_pools && sel.quest_pools.category !== 'elite')
-      .map((sel: any) => ({
+    const questsToInsert = activeSelections
+      .filter((sel) => sel.quest_pools && sel.quest_pools.category !== 'elite')
+      .map((sel) => ({
         user_id: userId,
         quest_pool_id: sel.quest_pool_id,
-        title: sel.quest_pools.title,
-        description: sel.quest_pools.description,
-        category: sel.quest_pools.category,
+        title: sel.quest_pools!.title,
+        description: sel.quest_pools!.description,
+        category: sel.quest_pools!.category,
         quest_type: 'side',
-        xp_reward: sel.quest_pools.xp_reward,
-        stat_target: sel.quest_pools.stat_target,
-        stat_reward: sel.quest_pools.stat_reward ?? 1,
+        xp_reward: sel.quest_pools!.xp_reward,
+        stat_target: sel.quest_pools!.stat_target,
+        stat_reward: sel.quest_pools!.stat_reward ?? 1,
         is_completed: false,
         date_assigned: today,
         date_completed: null,

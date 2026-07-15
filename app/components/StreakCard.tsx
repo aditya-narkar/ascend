@@ -1,10 +1,13 @@
 import { getShieldState, getDaysUntilShield } from '@/lib/streakShield'
+import type { UserProfile } from '@/lib/types'
+
+type ShieldUser = Pick<UserProfile, 'cycle_days_completed' | 'streak_shield_active' | 'streak_shield_used_date'>
 
 interface StreakCardProps {
   currentStreak: number
   bestStreak: number
   cycleDaysCompleted: number
-  user: any
+  user: ShieldUser
   shieldMessage?: string
 }
 

@@ -103,13 +103,13 @@ export default function UserCard({
   const xpToday = todayQuests
     .filter((q) => q.is_completed)
     .reduce((s, q) => s + (q.xp_reward ?? 0), 0)
+  const now = new Date()
   const daysSinceJoined = Math.floor(
-    (Date.now() - new Date(user.created_at).getTime()) / (1000 * 60 * 60 * 24),
+    (now.getTime() - new Date(user.created_at).getTime()) / (1000 * 60 * 60 * 24),
   )
 
   // Build 30-day activity grid (UTC-safe)
   const thirtyDays = Array.from({ length: 30 }, (_, i) => {
-    const now = new Date()
     const target = new Date(
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (29 - i)),
     )

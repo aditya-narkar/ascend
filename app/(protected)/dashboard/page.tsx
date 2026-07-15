@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { ensureTodayQuests, checkDailyStreak, checkAndExpireCycles } from '@/app/actions/quests'
-import { getMonarchProgress, getRankColor, formatTodayDate, getKaizenThreshold } from '@/lib/utils'
+import { getMonarchProgress, formatTodayDate, getKaizenThreshold } from '@/lib/utils'
 import DashboardClient from '@/app/components/DashboardClient'
 import type { UserProfile, Stats, Quest, QuestPool, QuestSelection, CycleReportData, PoolCategory, PenaltyQuest } from '@/lib/types'
 
@@ -43,7 +43,7 @@ export default async function DashboardPage() {
   const isFirstCycle = !lastCycle
 
   let cycleReport: CycleReportData | null = null
-  let questPoolsByCategory: Record<string, QuestPool[]> = {}
+  const questPoolsByCategory: Record<string, QuestPool[]> = {}
   let previousSelectionIds: string[] = []
 
   // Selection-phase data — all three fetched in parallel when needed
@@ -134,7 +134,7 @@ export default async function DashboardPage() {
       : null
 
   const daysSinceJoin =
-    Math.floor((Date.now() - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24)) + 1
+    Math.floor((new Date().getTime() - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24)) + 1
 
   return (
     <DashboardClient
@@ -144,7 +144,6 @@ export default async function DashboardPage() {
       penaltyQuests={penaltyQuests}
       dayCount={daysSinceJoin}
       monarchProgress={getMonarchProgress(profile.level)}
-      rankColor={getRankColor(profile.rank)}
       needsSelectionPhase={needsSelectionPhase}
       isFirstCycle={isFirstCycle}
       cycleReport={cycleReport}

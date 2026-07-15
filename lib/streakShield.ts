@@ -1,11 +1,15 @@
 import { getUTCDateString } from '@/lib/date'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { UserProfile } from '@/lib/types'
 
-export async function checkAndAwardShield(userId: string, supabase: any) {
+type ShieldUser = Pick<UserProfile, 'cycle_days_completed' | 'streak_shield_active' | 'streak_shield_used_date'>
+
+export async function checkAndAwardShield(userId: string, supabase: SupabaseClient) {
   const { data: user } = await supabase
     .from('users')
     .select('*')
     .eq('id', userId)
-    .single()
+    .single<UserProfile>()
 
   if (!user) return { shieldAwarded: false }
 
@@ -28,7 +32,7 @@ export async function checkAndAwardShield(userId: string, supabase: any) {
   return { shieldAwarded: false }
 }
 
-export async function consumeShield(userId: string, supabase: any) {
+export async function consumeShield(userId: string, supabase: SupabaseClient) {
   await supabase
     .from('users')
     .update({
@@ -38,13 +42,13 @@ export async function consumeShield(userId: string, supabase: any) {
     .eq('id', userId)
 }
 
-export function getShieldState(user: any): 'active' | 'used' | 'not_earned' {
+export function getShieldState(user: ShieldUser): 'active' | 'used' | 'not_earned' {
   if (user.streak_shield_active) return 'active'
   if (user.streak_shield_used_date) return 'used'
   return 'not_earned'
 }
 
-export function getDaysUntilShield(user: any): number {
+export function getDaysUntilShield(user: ShieldUser): number {
   const daysCompleted = user.cycle_days_completed ?? 0
   const nextMilestone = Math.ceil((daysCompleted + 1) / 21) * 21
   return nextMilestone - daysCompleted
@@ -57,13 +61,13 @@ export async function updateStreak(
   userId: string,
   completedCount: number,
   minimumRequired: number,
-  supabase: any,
+  supabase: SupabaseClient,
 ): Promise<{ shieldConsumed: boolean; shieldAwarded: boolean }> {
   const { data: user } = await supabase
     .from('users')
     .select('*')
     .eq('id', userId)
-    .single()
+    .single<UserProfile>()
 
   if (!user) return { shieldConsumed: false, shieldAwarded: false }
 

@@ -117,7 +117,6 @@ export default function OnboardingPage() {
       )}
       {step === 7 && (
         <CommitmentStep
-          archetype={archetype!}
           hunterName={hunterName}
           commitmentText={commitmentText}
           onHunterNameChange={setHunterName}
@@ -386,9 +385,9 @@ function ArchetypeReveal({ archetype, onContinue }: { archetype: Archetype; onCo
 
 /* ── Commitment ── */
 function CommitmentStep({
-  archetype, hunterName, commitmentText, onHunterNameChange, onCommitmentChange, onContinue, error,
+  hunterName, commitmentText, onHunterNameChange, onCommitmentChange, onContinue, error,
 }: {
-  archetype: Archetype; hunterName: string; commitmentText: string
+  hunterName: string; commitmentText: string
   onHunterNameChange: (v: string) => void; onCommitmentChange: (v: string) => void
   onContinue: () => void; error: string
 }) {

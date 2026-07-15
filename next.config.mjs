@@ -1,4 +1,6 @@
-const withPWA = require('next-pwa')({
+import nextPWA from 'next-pwa'
+
+const withPWA = nextPWA({
   dest: 'public',
   register: true,
   skipWaiting: true,
@@ -63,7 +65,7 @@ const withPWA = require('next-pwa')({
   ],
 })
 
-module.exports = withPWA({
+export default withPWA({
   reactStrictMode: true,
   // Turbopack is the default bundler in Next.js 16; next-pwa's webpack plugin
   // is silenced by this config so Turbopack can proceed.

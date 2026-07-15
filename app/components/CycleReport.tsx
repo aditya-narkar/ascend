@@ -2,8 +2,6 @@
 
 import type { CycleReportData } from '@/lib/types'
 
-const STAT_LABEL: Record<number, string> = { 1: 'CYCLE 1', 2: 'CYCLE 2', 3: 'CYCLE 3' }
-
 interface Props {
   report: CycleReportData
   onContinue: () => void

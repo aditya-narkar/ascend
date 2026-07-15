@@ -555,6 +555,8 @@ There is no native Expo env contract anymore; `EXPO_PUBLIC_*`, EAS project IDs, 
 Vercel config: [`vercel.json`](/C:/Users/Aditya/project/ascend/vercel.json)
 
 - build command: `npm run build`
+- Next config is ESM-only in [`next.config.mjs`](/C:/Users/Aditya/project/ascend/next.config.mjs); avoid reintroducing duplicate `next.config.js` or `next.config.ts` files.
+- icon generation script is [`scripts/generate-icons.mjs`](/C:/Users/Aditya/project/ascend/scripts/generate-icons.mjs)
 - cron:
   - path: `/api/cron/daily-reset`
   - schedule: `0 0 * * *`

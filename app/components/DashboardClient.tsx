@@ -52,7 +52,6 @@ interface Props {
   penaltyQuests: PenaltyQuest[]
   dayCount: number
   monarchProgress: number
-  rankColor: string
   needsSelectionPhase: boolean
   isFirstCycle: boolean
   cycleReport: CycleReportData | null
@@ -65,7 +64,7 @@ interface Props {
 }
 
 export default function DashboardClient({
-  profile, stats, quests, penaltyQuests, dayCount, monarchProgress, rankColor,
+  profile, stats, quests, penaltyQuests, dayCount, monarchProgress,
   needsSelectionPhase, isFirstCycle, cycleReport, questPoolsByCategory,
   previousSelectionIds, currentCycleNumber, kaizenThreshold, cycleExpiresDate,
   shieldMessage,
@@ -80,6 +79,7 @@ export default function DashboardClient({
     statsGained: { stat: string; value: number }[]
   } | null>(null)
   const [timeUntilReset, setTimeUntilReset] = useState('')
+  const [currentTimeMs, setCurrentTimeMs] = useState(() => new Date().getTime())
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set())
   const [reportDismissed, setReportDismissed] = useState(false)
   const [showSummary, setShowSummary] = useState(false)
@@ -140,7 +140,7 @@ export default function DashboardClient({
     console.log('[ASCEND] Notification permission:', Notification.permission)
 
     if (Notification.permission === 'granted') {
-      setNotificationsEnabled(true)
+      const timer = setTimeout(() => setNotificationsEnabled(true), 0)
       // Silently re-subscribe (handles reinstalls / new push keys)
       async function setup() {
         try {
@@ -150,44 +150,52 @@ export default function DashboardClient({
         } catch {}
       }
       setup()
+      return () => clearTimeout(timer)
     } else if (Notification.permission === 'default') {
-      setShowNotificationBanner(true)
+      const timer = setTimeout(() => setShowNotificationBanner(true), 0)
+      return () => clearTimeout(timer)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Completion animation state
   const [flashQuestId, setFlashQuestId] = useState<string | null>(null)
   const [systemMessage, setSystemMessage] = useState<string | null>(null)
   const [statDelta, setStatDelta] = useState<{ stat: string; amount: number; key: number } | null>(null)
-  const [xpDelta, setXpDelta] = useState<{ amount: number; key: number } | null>(null)
-  const [localTotalXP, setLocalTotalXP] = useState(profile.total_xp)
   const [eliteUnlockBanner, setEliteUnlockBanner] = useState(false)
-  const xpAnimKey = useRef(0)
   const statAnimKey = useRef(0)
   const msgTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Sync from server — but never wipe a non-empty local list with an empty response
   // (empty can occur during router.refresh() if the server had a generation race)
   useEffect(() => {
-    setQuestList((prev) => quests.length > 0 ? quests : prev)
+    const timer = setTimeout(() => {
+      setQuestList((prev) => quests.length > 0 ? quests : prev)
+    }, 0)
+    return () => clearTimeout(timer)
   }, [quests])
-  useEffect(() => { setLocalTotalXP(profile.total_xp) }, [profile.total_xp])
 
   // Auto-recover: if dashboard loaded with 0 quests and user has active selections,
   // trigger generation client-side and refresh — handles server-side timing races
   useEffect(() => {
-    if (quests.length > 0 || needsSelectionPhase) {
-      setIsInitializing(false)
-      return
+    let cancelled = false
+    const deferInitializing = (value: boolean) => {
+      setTimeout(() => {
+        if (!cancelled) setIsInitializing(value)
+      }, 0)
     }
-    setIsInitializing(true)
+
+    if (quests.length > 0 || needsSelectionPhase) {
+      deferInitializing(false)
+      return () => { cancelled = true }
+    }
+    deferInitializing(true)
     ensureTodayQuests(profile.id)
       .then((result) => {
+        if (cancelled) return
         if (result.quests.length > 0) setQuestList(result.quests)
         router.refresh()
       })
-      .finally(() => setIsInitializing(false))
+      .finally(() => deferInitializing(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // mount only — intentional
 
@@ -201,6 +209,7 @@ export default function DashboardClient({
       const m = Math.floor((diff % 3600000) / 60000)
       const s = Math.floor((diff % 60000) / 1000)
       setTimeUntilReset(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`)
+      setCurrentTimeMs(now.getTime())
     }
     tick()
     const id = setInterval(tick, 1000)
@@ -217,12 +226,9 @@ export default function DashboardClient({
       // ── 1. Instant UI updates — no awaiting, no blocking ──
       setQuestList((prev) => prev.map((q) => q.id === quest.id ? { ...q, is_completed: true } : q))
       setFlashQuestId(quest.id)
-      setLocalTotalXP((prev) => prev + quest.xp_reward)
       setTimeout(() => setFlashQuestId(null), 900)
 
       // XP delta animation on identity card
-      xpAnimKey.current += 1
-      setXpDelta({ amount: quest.xp_reward, key: xpAnimKey.current })
 
       // Stat delta animation
       if (quest.stat_target && quest.stat_reward) {
@@ -238,7 +244,6 @@ export default function DashboardClient({
       setSystemMessage(`Quest complete. ${statPart}System has recorded your progress.`)
       msgTimer.current = setTimeout(() => {
         setSystemMessage(null)
-        setXpDelta(null)
         setStatDelta(null)
       }, 3200)
 
@@ -255,7 +260,6 @@ export default function DashboardClient({
           removeProcessing(quest.id)
           if (!result.success) {
             setQuestList((prev) => prev.map((q) => q.id === quest.id ? { ...q, is_completed: false } : q))
-            setLocalTotalXP((prev) => Math.max(0, prev - quest.xp_reward))
           } else {
             if (result.leveledUp && result.newLevel && result.newRank) {
               setTimeout(() => {
@@ -279,22 +283,19 @@ export default function DashboardClient({
         .catch(() => {
           removeProcessing(quest.id)
           setQuestList((prev) => prev.map((q) => q.id === quest.id ? { ...q, is_completed: false } : q))
-          setLocalTotalXP((prev) => Math.max(0, prev - quest.xp_reward))
         })
     } else {
       // Uncomplete: instant rollback, background sync
       setQuestList((prev) => prev.map((q) => q.id === quest.id ? { ...q, is_completed: false } : q))
-      setLocalTotalXP((prev) => Math.max(0, prev - quest.xp_reward))
 
       uncompleteQuest(quest.id)
         .then(() => { removeProcessing(quest.id); router.refresh() })
         .catch(() => {
           removeProcessing(quest.id)
           setQuestList((prev) => prev.map((q) => q.id === quest.id ? { ...q, is_completed: true } : q))
-          setLocalTotalXP((prev) => prev + quest.xp_reward)
         })
     }
-  }, [processingIds, questList, kaizenThreshold, addProcessing, removeProcessing, profile])
+  }, [processingIds, questList, kaizenThreshold, addProcessing, removeProcessing, profile, router])
 
   // ── Enable notifications from user gesture ──────────────────
   async function handleEnableNotifications() {
@@ -426,7 +427,7 @@ export default function DashboardClient({
   )
 
   const cycleExpiresDays = cycleExpiresDate
-    ? Math.max(0, Math.ceil((new Date(cycleExpiresDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    ? Math.max(0, Math.ceil((new Date(cycleExpiresDate).getTime() - currentTimeMs) / (1000 * 60 * 60 * 24)))
     : null
 
   const allRegularQuests = questList.filter((q) => q.quest_type !== 'elite')
@@ -630,7 +631,7 @@ export default function DashboardClient({
             <div>
               <h2 className="font-display text-headline-md text-on-surface uppercase tracking-wider">DAILY HUNT</h2>
               <p className="font-mono text-system-label text-outline mt-0.5">
-                {formatHuntDate()} // CYCLE {String(currentCycleNumber).padStart(3, '0')}
+                {formatHuntDate()} {'//'} CYCLE {String(currentCycleNumber).padStart(3, '0')}
               </p>
             </div>
             <div className="flex items-center gap-3 mt-1">
@@ -782,8 +783,6 @@ export default function DashboardClient({
           </div>
         </div>
       )}
-    </div>
-
     {/* Daily completion summary overlay */}
     <DailyCompletionSummary
       isOpen={showSummary}
@@ -796,6 +795,7 @@ export default function DashboardClient({
       currentStreak={profile.current_streak}
       onDismiss={() => setShowSummary(false)}
     />
+    </div>
     </div>
   )
 }
