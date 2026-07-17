@@ -22,21 +22,24 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   if (typeof window === 'undefined') return null
   if (!('serviceWorker' in navigator)) return null
   try {
-    const registration = await navigator.serviceWorker.register('/sw.js')
+    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
     return registration
   } catch {
     return null
   }
 }
 
-export async function subscribeUserToPush(): Promise<PushSubscription | null> {
+export async function subscribeUserToPush(options: { refresh?: boolean } = {}): Promise<PushSubscription | null> {
   if (typeof window === 'undefined') return null
+  if (!('serviceWorker' in navigator)) return null
+  if (!('PushManager' in window)) return null
   const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim()
   if (!vapidKey) return null
   try {
     const registration = await navigator.serviceWorker.ready
     const existing = await registration.pushManager.getSubscription()
-    if (existing) return existing
+    if (existing && !options.refresh) return existing
+    if (existing && options.refresh) await existing.unsubscribe()
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(vapidKey),

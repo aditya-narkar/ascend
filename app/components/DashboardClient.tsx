@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { completeQuest, uncompleteQuest, ensureTodayQuests } from '@/app/actions/quests'
 import { logout } from '@/app/actions/auth'
 import { completePenaltyQuest } from '@/app/actions/penalty'
-import { saveNotificationSubscription } from '@/app/actions/notifications'
+import { saveNotificationSubscription, sendTestPushNotification } from '@/app/actions/notifications'
 import { registerServiceWorker, subscribeUserToPush } from '@/lib/notifications'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import CycleReport from './CycleReport'
@@ -91,6 +91,8 @@ export default function DashboardClient({
   const [activeTab, setActiveTab] = useState<HuntTab>('all')
   const [notificationsEnabled, setNotificationsEnabled] = useState(false)
   const [showNotificationBanner, setShowNotificationBanner] = useState(false)
+  const [notificationStatus, setNotificationStatus] = useState('')
+  const [isTestingNotification, setIsTestingNotification] = useState(false)
   const penaltyCheckRan = useRef(false)
 
   // ── Per-quest processing lock helpers ───────────────────────
@@ -146,8 +148,13 @@ export default function DashboardClient({
         try {
           await registerServiceWorker()
           const sub = await subscribeUserToPush()
-          if (sub) await saveNotificationSubscription(sub.toJSON() as Record<string, unknown>)
-        } catch {}
+          if (sub) {
+            const saved = await saveNotificationSubscription(sub.toJSON() as Record<string, unknown>)
+            if (!saved.success) setNotificationStatus(saved.error ?? 'Subscription save failed.')
+          }
+        } catch {
+          setNotificationStatus('Push setup failed. Use TEST PUSH to retry.')
+        }
       }
       setup()
       return () => clearTimeout(timer)
@@ -297,27 +304,75 @@ export default function DashboardClient({
     }
   }, [processingIds, questList, kaizenThreshold, addProcessing, removeProcessing, profile, router])
 
+  async function setupPushNotifications({
+    requestPermission,
+    refreshSubscription = false,
+  }: {
+    requestPermission: boolean
+    refreshSubscription?: boolean
+  }) {
+    if (typeof window === 'undefined') throw new Error('Notifications unavailable.')
+    if (!('Notification' in window)) throw new Error('Notifications are not supported on this browser.')
+    if (!('serviceWorker' in navigator)) throw new Error('Service workers are not supported on this browser.')
+    if (!('PushManager' in window)) throw new Error('Push notifications are not supported on this browser.')
+
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+      throw new Error('Push notifications require HTTPS.')
+    }
+
+    let permission = Notification.permission
+    if (permission === 'default' && requestPermission) {
+      permission = await Notification.requestPermission()
+    }
+    if (permission !== 'granted') {
+      throw new Error(`Notification permission is ${permission}.`)
+    }
+
+    const registration = await registerServiceWorker()
+    if (!registration) throw new Error('Service worker registration failed.')
+
+    const sub = await subscribeUserToPush({ refresh: refreshSubscription })
+    if (!sub) throw new Error('Push subscription failed. Check the VAPID public key.')
+
+    const saved = await saveNotificationSubscription(sub.toJSON() as Record<string, unknown>)
+    if (!saved.success) throw new Error(saved.error ?? 'Subscription save failed.')
+
+    setNotificationsEnabled(true)
+    setShowNotificationBanner(false)
+    return sub
+  }
+
   // ── Enable notifications from user gesture ──────────────────
   async function handleEnableNotifications() {
     try {
+      setNotificationStatus('Preparing push channel...')
       console.log('[ASCEND] VAPID public key exists:', !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
       console.log('[ASCEND] VAPID key starts with:', process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.substring(0, 20))
 
-      const permission = await Notification.requestPermission()
-      console.log('[ASCEND] Permission result:', permission)
-      if (permission !== 'granted') return
-
-      await registerServiceWorker()
-      const sub = await subscribeUserToPush()
-      console.log('[ASCEND] Subscription created:', sub)
-      if (sub) {
-        await saveNotificationSubscription(sub.toJSON() as Record<string, unknown>)
-        console.log('[ASCEND] Subscription saved successfully')
-      }
-      setNotificationsEnabled(true)
-      setShowNotificationBanner(false)
+      const sub = await setupPushNotifications({ requestPermission: true })
+      console.log('[ASCEND] Subscription ready:', sub.endpoint)
+      setNotificationStatus('Push channel ready.')
     } catch (error) {
       console.error('[ASCEND] Notification setup error:', error)
+      setNotificationStatus(error instanceof Error ? error.message : 'Notification setup failed.')
+    }
+  }
+
+  async function handleTestPushNotification() {
+    if (isTestingNotification) return
+    setIsTestingNotification(true)
+    setNotificationStatus('Refreshing phone push channel...')
+    try {
+      await setupPushNotifications({ requestPermission: true, refreshSubscription: true })
+      setNotificationStatus('Sending test push...')
+      const result = await sendTestPushNotification()
+      if (!result.success) throw new Error(result.error ?? 'Test push failed.')
+      setNotificationStatus('Test push sent. Lock the phone or watch for the banner.')
+    } catch (error) {
+      console.error('[ASCEND] Test push error:', error)
+      setNotificationStatus(error instanceof Error ? error.message : 'Test push failed.')
+    } finally {
+      setIsTestingNotification(false)
     }
   }
 
@@ -503,6 +558,9 @@ export default function DashboardClient({
             <p className="font-mono text-[10px] text-on-surface-variant">
               Allow notifications to receive quest reminders and penalty alerts.
             </p>
+            {notificationStatus && (
+              <p className="font-mono text-[10px] text-outline mt-2">{notificationStatus}</p>
+            )}
           </div>
           <button
             onClick={handleEnableNotifications}
@@ -513,24 +571,27 @@ export default function DashboardClient({
         </div>
       )}
 
-      {/* DEV: test notification + penalty zone trigger */}
+      {notificationsEnabled && (
+        <div className="mx-4 mt-4 card-gradient border border-secondary/30 p-3 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="font-mono text-system-label text-secondary mb-1">SYSTEM ALERTS ONLINE</div>
+            <p className="font-mono text-[10px] text-outline truncate">
+              {notificationStatus || 'Push channel ready.'}
+            </p>
+          </div>
+          <button
+            onClick={handleTestPushNotification}
+            disabled={isTestingNotification}
+            className="font-mono text-[10px] text-secondary border border-secondary/40 px-3 py-2 tracking-widest disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          >
+            {isTestingNotification ? 'SENDING...' : 'TEST PUSH'}
+          </button>
+        </div>
+      )}
+
+      {/* DEV: penalty zone trigger */}
       {process.env.NODE_ENV === 'development' && (
         <div className="mx-4 flex gap-2 flex-wrap">
-          <button
-            onClick={() => {
-              if (Notification.permission === 'granted') {
-                new Notification('ASCEND TEST', {
-                  body: 'System notification working.',
-                  icon: '/icons/icon-192x192.png',
-                })
-              } else {
-                console.log('[ASCEND] Permission not granted:', Notification.permission)
-              }
-            }}
-            className="font-mono text-[10px] text-secondary border border-secondary/40 px-3 py-1"
-          >
-            TEST NOTIF
-          </button>
           <button
             onClick={async () => {
               const supabase = createBrowserClient()
