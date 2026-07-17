@@ -16,6 +16,11 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
 )
 
+type PushSubscriptionRow = {
+  id?: string
+  subscription: unknown
+}
+
 function configureWebPush() {
   if (!vapidPublicKey || !vapidPrivateKey || !vapidEmailRaw) {
     throw new Error('Missing VAPID configuration')
@@ -28,6 +33,12 @@ function configureWebPush() {
   )
 }
 
+function getPushErrorStatus(err: unknown): number | null {
+  if (typeof err !== 'object' || err === null) return null
+  const statusCode = (err as { statusCode?: unknown }).statusCode
+  return typeof statusCode === 'number' ? statusCode : null
+}
+
 async function sendToUser(
   userId: string,
   title: string,
@@ -36,22 +47,30 @@ async function sendToUser(
   url?: string,
   renotify = false,
 ) {
-  const { data: sub } = await supabase
+  const { data: subscriptions } = await supabase
     .from('push_subscriptions')
-    .select('subscription')
+    .select('id, subscription')
     .eq('user_id', userId)
-    .single()
 
-  if (!sub?.subscription) return
+  if (!subscriptions?.length) return
 
   try {
     configureWebPush()
-    await webpush.sendNotification(
-      sub.subscription,
-      JSON.stringify({ title, body, tag, url, renotify }),
-    )
   } catch {
-    // Ignore send failures (stale subscription etc)
+    return
+  }
+
+  const payload = JSON.stringify({ title, body, tag, url, renotify })
+
+  for (const sub of subscriptions as PushSubscriptionRow[]) {
+    try {
+      await webpush.sendNotification(sub.subscription, payload)
+    } catch (err) {
+      const status = getPushErrorStatus(err)
+      if ((status === 404 || status === 410) && sub.id) {
+        await supabase.from('push_subscriptions').delete().eq('id', sub.id)
+      }
+    }
   }
 }
 
@@ -69,7 +88,7 @@ Deno.serve(async () => {
     return new Response(JSON.stringify({ ok: true, sent: 0 }), { status: 200 })
   }
 
-  const userIds = subscriptions.map((s: { user_id: string }) => s.user_id)
+  const userIds = [...new Set(subscriptions.map((s: { user_id: string }) => s.user_id))]
   let sent = 0
 
   for (const userId of userIds) {

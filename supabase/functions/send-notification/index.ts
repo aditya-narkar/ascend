@@ -18,6 +18,11 @@ const supabaseAdmin = createClient(
 
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
+type PushSubscriptionRow = {
+  id?: string
+  subscription: unknown
+}
+
 function configureWebPush() {
   if (!vapidPublicKey || !vapidPrivateKey || !vapidEmailRaw) {
     throw new Error('Missing VAPID configuration')
@@ -28,6 +33,12 @@ function configureWebPush() {
     vapidPublicKey,
     vapidPrivateKey,
   )
+}
+
+function getPushErrorStatus(err: unknown): number | null {
+  if (typeof err !== 'object' || err === null) return null
+  const statusCode = (err as { statusCode?: unknown }).statusCode
+  return typeof statusCode === 'number' ? statusCode : null
 }
 
 Deno.serve(async (req: Request) => {
@@ -47,25 +58,49 @@ Deno.serve(async (req: Request) => {
     return new Response('Missing user_id', { status: 400 })
   }
 
-  const { data: sub, error } = await supabaseAdmin
+  const { data: subscriptions, error } = await supabaseAdmin
     .from('push_subscriptions')
-    .select('subscription')
+    .select('id, subscription')
     .eq('user_id', user_id)
-    .single()
 
-  if (error || !sub?.subscription) {
+  if (error || !subscriptions?.length) {
     return new Response('No subscription found', { status: 404 })
   }
 
   try {
     configureWebPush()
-    await webpush.sendNotification(
-      sub.subscription,
-      JSON.stringify({ title, body, tag, url, renotify }),
-    )
-    return new Response('Sent', { status: 200 })
   } catch (err) {
-    console.error('Push failed:', err)
-    return new Response('Push failed', { status: 500 })
+    console.error('Push configuration failed:', err)
+    return new Response('Push configuration failed', { status: 500 })
   }
+
+  const payload = JSON.stringify({ title, body, tag, url, renotify })
+  let sent = 0
+  let failed = 0
+
+  for (const sub of subscriptions as PushSubscriptionRow[]) {
+    try {
+      await webpush.sendNotification(sub.subscription, payload)
+      sent++
+    } catch (err) {
+      failed++
+      const status = getPushErrorStatus(err)
+      if ((status === 404 || status === 410) && sub.id) {
+        await supabaseAdmin.from('push_subscriptions').delete().eq('id', sub.id)
+      }
+      console.error('Push failed:', err)
+    }
+  }
+
+  if (sent === 0) {
+    return new Response(JSON.stringify({ sent, failed }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  return new Response(JSON.stringify({ sent, failed }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
 })

@@ -15,6 +15,8 @@ type PushParams = {
 type PushActionResult = {
   success: boolean
   error?: string
+  sent?: number
+  failed?: number
 }
 
 async function dispatchPushNotification(params: PushParams): Promise<PushActionResult> {
@@ -32,11 +34,17 @@ async function dispatchPushNotification(params: PushParams): Promise<PushActionR
       },
       body: JSON.stringify(params),
     })
+    const responseText = await res.text()
     if (!res.ok) {
-      const error = await res.text()
+      const error = responseText
       return { success: false, error: error || `Push send failed with ${res.status}.` }
     }
-    return { success: true }
+    try {
+      const result = JSON.parse(responseText) as { sent?: number; failed?: number }
+      return { success: true, sent: result.sent, failed: result.failed }
+    } catch {
+      return { success: true }
+    }
   } catch (error) {
     return {
       success: false,
@@ -83,10 +91,23 @@ export async function saveNotificationSubscription(
   const admin = createAdminClient()
   const { error } = await admin
     .from('push_subscriptions')
+    .upsert(
+      { user_id: user.id, endpoint, subscription, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,endpoint' },
+    )
+
+  if (!error) {
+    return { success: true }
+  }
+
+  // Backward-compatible fallback for databases that have not applied the
+  // multi-device push subscription migration yet.
+  const { error: legacyError } = await admin
+    .from('push_subscriptions')
     .upsert({ user_id: user.id, subscription }, { onConflict: 'user_id' })
 
-  if (error) {
-    return { success: false, error: error.message }
+  if (legacyError) {
+    return { success: false, error: `${error.message}; fallback failed: ${legacyError.message}` }
   }
 
   return { success: true }

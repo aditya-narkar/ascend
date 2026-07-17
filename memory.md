@@ -356,7 +356,7 @@ Notification flow:
 - subscription is saved to `push_subscriptions` by a server action that verifies the signed-in user and writes with the service-role client
 - server action or edge scheduler calls `send-notification`
 - edge function loads the subscription and sends a Web Push payload
-- dashboard shows a `TEST PUSH` control when notifications are enabled; it refreshes the current device subscription, saves it, then sends a real server push to the logged-in user
+- dashboard shows a `TEST PUSH` control when notifications are enabled; it refreshes the current device subscription, saves it, then sends a real server push to every saved device endpoint for the logged-in user
 
 Important configuration detail:
 
@@ -364,7 +364,7 @@ Important configuration detail:
 - edge functions accept `VAPID_PUBLIC_KEY` and also fall back to `NEXT_PUBLIC_VAPID_PUBLIC_KEY` if the server-only copy is missing
 - `VAPID_EMAIL` may be stored either as `your@email.com` or `mailto:your@email.com`; the edge functions normalize it before calling `web-push`
 - `push_subscriptions.subscription` is expected to be a browser Web Push subscription object for the PWA
-- current schema stores one subscription row per user, so the most recently saved device is the active push target
+- `push_subscriptions` supports multiple devices per user after applying [`supabase-push-subscriptions-multi-device.sql`](/C:/Users/Aditya/project/ascend/supabase-push-subscriptions-multi-device.sql); uniqueness is `(user_id, endpoint)`
 
 Important `send-notification` edge-function behavior:
 
@@ -439,6 +439,7 @@ Base schema files:
 - [`supabase-elite-week-migration.sql`](/C:/Users/Aditya/project/ascend/supabase-elite-week-migration.sql)
 - [`supabase-penalty-system.sql`](/C:/Users/Aditya/project/ascend/supabase-penalty-system.sql)
 - [`supabase-trigger.sql`](/C:/Users/Aditya/project/ascend/supabase-trigger.sql)
+- [`supabase-push-subscriptions-multi-device.sql`](/C:/Users/Aditya/project/ascend/supabase-push-subscriptions-multi-device.sql)
 
 ### Main tables
 
@@ -498,7 +499,7 @@ Base schema files:
 
 `push_subscriptions`
 
-- stores Web Push subscription JSON per user
+- stores Web Push subscription JSON per user/device endpoint
 
 `archetype_quests`
 

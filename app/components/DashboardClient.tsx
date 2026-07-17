@@ -367,7 +367,8 @@ export default function DashboardClient({
       setNotificationStatus('Sending test push...')
       const result = await sendTestPushNotification()
       if (!result.success) throw new Error(result.error ?? 'Test push failed.')
-      setNotificationStatus('Test push sent. Lock the phone or watch for the banner.')
+      const sentText = typeof result.sent === 'number' ? ` Sent to ${result.sent} device${result.sent === 1 ? '' : 's'}.` : ''
+      setNotificationStatus(`Test push sent.${sentText} Lock the phone or watch for the banner.`)
     } catch (error) {
       console.error('[ASCEND] Test push error:', error)
       setNotificationStatus(error instanceof Error ? error.message : 'Test push failed.')
