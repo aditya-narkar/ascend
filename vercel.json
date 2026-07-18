@@ -6,10 +6,6 @@
     {
       "path": "/api/cron/daily-reset",
       "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/notification-scheduler",
-      "schedule": "0 9 * * *"
     }
   ]
 }

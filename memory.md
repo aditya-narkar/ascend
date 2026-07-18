@@ -566,8 +566,11 @@ Vercel config: [`vercel.json`](/C:/Users/Aditya/project/ascend/vercel.json)
 - cron:
   - path: `/api/cron/daily-reset`
   - schedule: `0 0 * * *`
-  - path: `/api/cron/notification-scheduler`
-  - schedule: `0 9 * * *` on Vercel Hobby; hourly schedules exceed Hobby cron limits
+- notification scheduling has moved off Vercel Cron to Supabase Cron:
+  - job name: `ascend-notification-scheduler`
+  - schedule: `0 * * * *`
+  - target: `https://iaqutuhcdnsfavefhttc.supabase.co/functions/v1/notification-scheduler`
+  - auth headers are built from Supabase Vault secrets `project_url` and `anon_key`
 
 The cron route:
 
