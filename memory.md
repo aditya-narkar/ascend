@@ -566,6 +566,8 @@ Vercel config: [`vercel.json`](/C:/Users/Aditya/project/ascend/vercel.json)
 - cron:
   - path: `/api/cron/daily-reset`
   - schedule: `0 0 * * *`
+  - path: `/api/cron/notification-scheduler`
+  - schedule: `0 9 * * *` on Vercel Hobby; hourly schedules exceed Hobby cron limits
 
 The cron route:
 
