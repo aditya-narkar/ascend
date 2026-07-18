@@ -358,6 +358,7 @@ Notification flow:
 - server action or edge scheduler calls `send-notification`
 - edge function loads the subscription and sends a Web Push payload
 - dashboard shows a persistent notification status panel after browser detection; it displays enable/test controls when possible and blocked/unavailable diagnostics when Android/browser settings prevent Web Push
+- `narkaraditya04@gmail.com` is explicitly allowlisted to always render the dashboard notification panel, even before browser detection finishes
 - the `TEST PUSH` control refreshes the current device subscription, saves it, then sends a real server push to every saved device endpoint for the logged-in user
 
 Important configuration detail:

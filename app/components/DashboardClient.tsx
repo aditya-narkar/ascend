@@ -28,6 +28,8 @@ const STAT_COLORS: Record<string, string> = {
 type HuntTab = 'all' | 'physical' | 'mental' | 'focus'
 type NotificationPermissionState = NotificationPermission | 'unknown'
 
+const NOTIFICATION_PANEL_EMAILS = new Set(['narkaraditya04@gmail.com'])
+
 const CATEGORY_ICONS: Record<string, string> = {
   physical: 'directions_run',
   mental: 'menu_book',
@@ -563,10 +565,11 @@ export default function DashboardClient({
     )
   }
 
+  const forceNotificationPanel = NOTIFICATION_PANEL_EMAILS.has((profile.email ?? '').toLowerCase())
   const notificationUnavailable = notificationUiReady && (!notificationSupported || !pushSupported || !securePushContext)
   const notificationsBlocked = notificationPermission === 'denied'
-  const canEnableNotifications = notificationUiReady && !notificationUnavailable && !notificationsBlocked && !notificationsEnabled
-  const showNotificationCard = notificationUiReady || showNotificationBanner || notificationsEnabled
+  const canEnableNotifications = (notificationUiReady || forceNotificationPanel) && !notificationUnavailable && !notificationsBlocked && !notificationsEnabled
+  const showNotificationCard = forceNotificationPanel || notificationUiReady || showNotificationBanner || notificationsEnabled
   const notificationCardTitle = notificationUnavailable
     ? 'SYSTEM ALERTS UNAVAILABLE'
     : notificationsBlocked
