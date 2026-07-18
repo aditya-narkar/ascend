@@ -26,6 +26,7 @@ const STAT_COLORS: Record<string, string> = {
 }
 
 type HuntTab = 'all' | 'physical' | 'mental' | 'focus'
+type NotificationPermissionState = NotificationPermission | 'unknown'
 
 const CATEGORY_ICONS: Record<string, string> = {
   physical: 'directions_run',
@@ -93,6 +94,11 @@ export default function DashboardClient({
   const [showNotificationBanner, setShowNotificationBanner] = useState(false)
   const [notificationStatus, setNotificationStatus] = useState('')
   const [isTestingNotification, setIsTestingNotification] = useState(false)
+  const [notificationUiReady, setNotificationUiReady] = useState(false)
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermissionState>('unknown')
+  const [notificationSupported, setNotificationSupported] = useState(true)
+  const [pushSupported, setPushSupported] = useState(true)
+  const [securePushContext, setSecurePushContext] = useState(true)
   const penaltyCheckRan = useRef(false)
 
   // ── Per-quest processing lock helpers ───────────────────────
@@ -124,7 +130,42 @@ export default function DashboardClient({
 
   // ── Notification permission + SW setup ──────────────────────
   useEffect(() => {
-    if (typeof window === 'undefined' || !('Notification' in window)) return
+    if (typeof window === 'undefined') return
+
+    const timers: ReturnType<typeof setTimeout>[] = []
+    const defer = (fn: () => void) => {
+      const timer = setTimeout(fn, 0)
+      timers.push(timer)
+    }
+
+    const hasNotifications = 'Notification' in window
+    const hasServiceWorker = 'serviceWorker' in navigator
+    const hasPushManager = 'PushManager' in window
+    const isSecureForPush = window.location.protocol === 'https:' || window.location.hostname === 'localhost'
+
+    defer(() => {
+      setNotificationUiReady(true)
+      setNotificationSupported(hasNotifications)
+      setPushSupported(hasServiceWorker && hasPushManager)
+      setSecurePushContext(isSecureForPush)
+    })
+
+    if (!hasNotifications) {
+      defer(() => setNotificationStatus('This browser does not support notifications.'))
+      return () => timers.forEach(clearTimeout)
+    }
+
+    defer(() => setNotificationPermission(Notification.permission))
+
+    if (!hasServiceWorker || !hasPushManager) {
+      defer(() => setNotificationStatus('This browser does not support Web Push.'))
+      return () => timers.forEach(clearTimeout)
+    }
+
+    if (!isSecureForPush) {
+      defer(() => setNotificationStatus('Push notifications require HTTPS.'))
+      return () => timers.forEach(clearTimeout)
+    }
 
     // Debug: log SW and subscription status
     if ('serviceWorker' in navigator) {
@@ -142,7 +183,10 @@ export default function DashboardClient({
     console.log('[ASCEND] Notification permission:', Notification.permission)
 
     if (Notification.permission === 'granted') {
-      const timer = setTimeout(() => setNotificationsEnabled(true), 0)
+      defer(() => {
+        setNotificationsEnabled(true)
+        setShowNotificationBanner(false)
+      })
       // Silently re-subscribe (handles reinstalls / new push keys)
       async function setup() {
         try {
@@ -157,11 +201,16 @@ export default function DashboardClient({
         }
       }
       setup()
-      return () => clearTimeout(timer)
     } else if (Notification.permission === 'default') {
-      const timer = setTimeout(() => setShowNotificationBanner(true), 0)
-      return () => clearTimeout(timer)
+      defer(() => setShowNotificationBanner(true))
+    } else if (Notification.permission === 'denied') {
+      defer(() => {
+        setShowNotificationBanner(true)
+        setNotificationStatus('Notifications are blocked for this site. Enable them in Android Chrome site settings.')
+      })
     }
+
+    return () => timers.forEach(clearTimeout)
   }, [])
 
   // Completion animation state
@@ -324,7 +373,10 @@ export default function DashboardClient({
     if (permission === 'default' && requestPermission) {
       permission = await Notification.requestPermission()
     }
+    setNotificationPermission(permission)
     if (permission !== 'granted') {
+      setNotificationsEnabled(false)
+      setShowNotificationBanner(true)
       throw new Error(`Notification permission is ${permission}.`)
     }
 
@@ -339,6 +391,7 @@ export default function DashboardClient({
 
     setNotificationsEnabled(true)
     setShowNotificationBanner(false)
+    setNotificationPermission('granted')
     return sub
   }
 
@@ -510,6 +563,25 @@ export default function DashboardClient({
     )
   }
 
+  const notificationUnavailable = notificationUiReady && (!notificationSupported || !pushSupported || !securePushContext)
+  const notificationsBlocked = notificationPermission === 'denied'
+  const canEnableNotifications = notificationUiReady && !notificationUnavailable && !notificationsBlocked && !notificationsEnabled
+  const showNotificationCard = notificationUiReady || showNotificationBanner || notificationsEnabled
+  const notificationCardTitle = notificationUnavailable
+    ? 'SYSTEM ALERTS UNAVAILABLE'
+    : notificationsBlocked
+      ? 'SYSTEM ALERTS BLOCKED'
+      : notificationsEnabled
+        ? 'SYSTEM ALERTS ONLINE'
+        : 'ENABLE SYSTEM ALERTS'
+  const notificationCardBody = notificationUnavailable
+    ? notificationStatus || 'This browser cannot register ASCEND push alerts.'
+    : notificationsBlocked
+      ? 'Android has blocked alerts for this site. Open Chrome site settings and allow notifications.'
+      : notificationsEnabled
+        ? notificationStatus || 'Push channel ready.'
+        : notificationStatus || 'Allow notifications to receive quest reminders and penalty alerts.'
+
   return (
     <div className="max-w-lg mx-auto">
       {/* Penalty + cycle banners */}
@@ -551,42 +623,41 @@ export default function DashboardClient({
 
     <div className="space-y-4 pb-20">
 
-      {/* Notification permission banner */}
-      {showNotificationBanner && !notificationsEnabled && (
-        <div className="mx-4 mt-4 card-gradient border border-primary-container p-4 flex items-center justify-between gap-4">
-          <div>
-            <div className="font-mono text-system-label text-secondary mb-1">ENABLE SYSTEM ALERTS</div>
-            <p className="font-mono text-[10px] text-on-surface-variant">
-              Allow notifications to receive quest reminders and penalty alerts.
-            </p>
-            {notificationStatus && (
-              <p className="font-mono text-[10px] text-outline mt-2">{notificationStatus}</p>
-            )}
-          </div>
-          <button
-            onClick={handleEnableNotifications}
-            className="px-4 py-2 bg-primary-container border border-[#6B3FD4] font-mono text-system-label text-on-primary-container uppercase tracking-widest whitespace-nowrap hover:shadow-[0_0_10px_#6CCBFF] transition-all text-[10px]"
-          >
-            ENABLE
-          </button>
-        </div>
-      )}
-
-      {notificationsEnabled && (
-        <div className="mx-4 mt-4 card-gradient border border-secondary/30 p-3 flex items-center justify-between gap-3">
+      {/* Notification status + test controls */}
+      {showNotificationCard && (
+        <div className={`mx-4 mt-4 card-gradient border p-3 flex items-center justify-between gap-3 ${
+          notificationUnavailable || notificationsBlocked ? 'border-error/30' : 'border-secondary/30'
+        }`}>
           <div className="min-w-0">
-            <div className="font-mono text-system-label text-secondary mb-1">SYSTEM ALERTS ONLINE</div>
-            <p className="font-mono text-[10px] text-outline truncate">
-              {notificationStatus || 'Push channel ready.'}
+            <div className={`font-mono text-system-label mb-1 ${
+              notificationUnavailable || notificationsBlocked ? 'text-error' : 'text-secondary'
+            }`}>
+              {notificationCardTitle}
+            </div>
+            <p className="font-mono text-[10px] text-outline leading-relaxed">
+              {notificationCardBody}
             </p>
           </div>
-          <button
-            onClick={handleTestPushNotification}
-            disabled={isTestingNotification}
-            className="font-mono text-[10px] text-secondary border border-secondary/40 px-3 py-2 tracking-widest disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-          >
-            {isTestingNotification ? 'SENDING...' : 'TEST PUSH'}
-          </button>
+          {notificationsEnabled ? (
+            <button
+              onClick={handleTestPushNotification}
+              disabled={isTestingNotification}
+              className="font-mono text-[10px] text-secondary border border-secondary/40 px-3 py-2 tracking-widest disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              {isTestingNotification ? 'SENDING...' : 'TEST PUSH'}
+            </button>
+          ) : canEnableNotifications ? (
+            <button
+              onClick={handleEnableNotifications}
+              className="px-4 py-2 bg-primary-container border border-[#6B3FD4] font-mono text-system-label text-on-primary-container uppercase tracking-widest whitespace-nowrap hover:shadow-[0_0_10px_#6CCBFF] transition-all text-[10px]"
+            >
+              ENABLE
+            </button>
+          ) : (
+            <span className="font-mono text-[10px] text-outline border border-outline-variant px-3 py-2 tracking-widest whitespace-nowrap">
+              {notificationsBlocked ? 'BLOCKED' : 'CHECK'}
+            </span>
+          )}
         </div>
       )}
 

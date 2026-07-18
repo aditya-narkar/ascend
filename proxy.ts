@@ -29,6 +29,7 @@ export async function proxy(request: NextRequest) {
 
   const path = request.nextUrl.pathname
   const isAuthRoute = path.startsWith('/auth')
+  const isPasswordResetRoute = path.startsWith('/auth/reset-password')
   const isOnboarding = path.startsWith('/onboarding')
   const isProtected = path.startsWith('/dashboard') || path.startsWith('/stats') || path.startsWith('/profile')
 
@@ -40,7 +41,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/login', request.url))
   }
 
-  if (user && isAuthRoute) {
+  if (user && isAuthRoute && !isPasswordResetRoute) {
     const { data: profile } = await supabase
       .from('users')
       .select('hunter_name')

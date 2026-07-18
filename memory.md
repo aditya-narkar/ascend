@@ -51,8 +51,9 @@ The repo is now web-only again.
 
 ### 1. Authentication
 
-- `/auth/login` and `/auth/signup` are client pages that call server actions in [`app/actions/auth.ts`](/C:/Users/Aditya/project/ascend/app/actions/auth.ts).
-- Supabase auth is used for sign-in/sign-up/sign-out.
+- `/auth/login`, `/auth/signup`, and `/auth/forgot-password` are client pages that call server actions in [`app/actions/auth.ts`](/C:/Users/Aditya/project/ascend/app/actions/auth.ts).
+- Supabase auth is used for sign-in/sign-up/sign-out and password recovery.
+- `/auth/reset-password` handles Supabase recovery links, exchanges the recovery code/session in the browser, and lets the user set a new password.
 - A DB trigger auto-creates a `users` row on auth signup; onboarding later fills in the rest.
 
 ### 2. Root routing
@@ -356,7 +357,8 @@ Notification flow:
 - subscription is saved to `push_subscriptions` by a server action that verifies the signed-in user and writes with the service-role client
 - server action or edge scheduler calls `send-notification`
 - edge function loads the subscription and sends a Web Push payload
-- dashboard shows a `TEST PUSH` control when notifications are enabled; it refreshes the current device subscription, saves it, then sends a real server push to every saved device endpoint for the logged-in user
+- dashboard shows a persistent notification status panel after browser detection; it displays enable/test controls when possible and blocked/unavailable diagnostics when Android/browser settings prevent Web Push
+- the `TEST PUSH` control refreshes the current device subscription, saves it, then sends a real server push to every saved device endpoint for the logged-in user
 
 Important configuration detail:
 

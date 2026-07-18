@@ -2,22 +2,29 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { login } from '@/app/actions/auth'
+import { requestPasswordReset } from '@/app/actions/auth'
 
-export default function LoginPage() {
+export default function ForgotPasswordPage() {
+  const [email, setEmail] = useState('')
+  const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
+    setMessage('')
     setError('')
+
     const fd = new FormData(e.currentTarget)
-    const result = await login(fd)
+    const result = await requestPasswordReset(fd)
+
     if (result?.error) {
       setError(result.error)
-      setLoading(false)
+    } else {
+      setMessage(result?.message ?? 'Password reset link sent. Check your email.')
     }
+    setLoading(false)
   }
 
   return (
@@ -28,7 +35,7 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-sm">
         <div className="text-center mb-10">
-          <p className="text-xs tracking-[0.4em] text-text-secondary mb-2">PERSONAL EVOLUTION SYSTEM</p>
+          <p className="text-xs tracking-[0.4em] text-text-secondary mb-2">ACCOUNT RECOVERY</p>
           <h1
             className="text-4xl font-bold tracking-widest text-text-primary"
             style={{ fontFamily: 'var(--font-rajdhani)' }}
@@ -39,7 +46,7 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-card border border-border rounded-sm p-8 aura-glow-sm">
-          <p className="text-xs tracking-[0.3em] text-text-secondary mb-6">HUNTER AUTHENTICATION</p>
+          <p className="text-xs tracking-[0.3em] text-text-secondary mb-6">RESET ACCESS KEY</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -51,27 +58,10 @@ export default function LoginPage() {
                 type="email"
                 required
                 autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-bg-secondary border border-border rounded-sm px-3 py-2.5 text-sm text-text-primary placeholder-text-secondary/40 focus:outline-none focus:border-aura-primary transition-colors"
                 placeholder="hunter@domain.com"
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs text-text-secondary tracking-widest">
-                  PASSWORD
-                </label>
-                <Link href="/auth/forgot-password" className="text-[10px] text-highlight-1 hover:text-highlight-2 tracking-widest transition-colors">
-                  FORGOT?
-                </Link>
-              </div>
-              <input
-                name="password"
-                type="password"
-                required
-                autoComplete="current-password"
-                className="w-full bg-bg-secondary border border-border rounded-sm px-3 py-2.5 text-sm text-text-primary placeholder-text-secondary/40 focus:outline-none focus:border-aura-primary transition-colors"
-                placeholder="••••••••"
               />
             </div>
 
@@ -81,28 +71,31 @@ export default function LoginPage() {
               </p>
             )}
 
+            {message && (
+              <p className="text-xs text-highlight-1 tracking-wide border border-highlight-1/20 bg-highlight-1/5 px-3 py-2 rounded-sm">
+                {message}
+              </p>
+            )}
+
             <button
               type="submit"
               disabled={loading}
               className="w-full bg-aura-primary hover:bg-aura-primary/80 disabled:opacity-50 text-text-primary font-semibold tracking-widest py-3 rounded-sm transition-all mt-2"
               style={{ fontFamily: 'var(--font-rajdhani)' }}
             >
-              {loading ? 'AUTHENTICATING...' : 'ENTER SYSTEM'}
+              {loading ? 'TRANSMITTING...' : 'SEND RESET LINK'}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-xs text-text-secondary">
-              No account?{' '}
-              <Link href="/auth/signup" className="text-highlight-1 hover:text-highlight-2 transition-colors">
-                Create hunter profile
-              </Link>
-            </p>
+            <Link href="/auth/login" className="text-xs text-highlight-1 hover:text-highlight-2 transition-colors">
+              Return to login
+            </Link>
           </div>
         </div>
 
         <p className="text-center text-xs text-text-secondary/40 mt-6 tracking-widest">
-          SYS_AUTH v4.2.1
+          SYS_RECOVERY v1.0.0
         </p>
       </div>
     </div>
