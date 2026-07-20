@@ -348,6 +348,7 @@ Edge functions:
 
 - [`supabase/functions/send-notification/index.ts`](/C:/Users/Aditya/project/ascend/supabase/functions/send-notification/index.ts)
 - [`supabase/functions/notification-scheduler/index.ts`](/C:/Users/Aditya/project/ascend/supabase/functions/notification-scheduler/index.ts)
+- [`supabase/functions/daily-reset/index.ts`](/C:/Users/Aditya/project/ascend/supabase/functions/daily-reset/index.ts)
 
 Notification flow:
 
@@ -563,16 +564,20 @@ Vercel config: [`vercel.json`](/C:/Users/Aditya/project/ascend/vercel.json)
 - build command: `npm run build`
 - Next config is ESM-only in [`next.config.mjs`](/C:/Users/Aditya/project/ascend/next.config.mjs); avoid reintroducing duplicate `next.config.js` or `next.config.ts` files.
 - icon generation script is [`scripts/generate-icons.mjs`](/C:/Users/Aditya/project/ascend/scripts/generate-icons.mjs)
-- cron:
-  - path: `/api/cron/daily-reset`
+- Vercel Cron is not used for recurring jobs; scheduled backend work runs through Supabase Cron and Edge Functions.
+- daily reset has moved off Vercel Cron to Supabase Cron:
+  - job name: `ascend-daily-reset`
   - schedule: `0 0 * * *`
+  - target: `https://iaqutuhcdnsfavefhttc.supabase.co/functions/v1/daily-reset`
+  - auth header is built from Supabase Vault secret `cron_secret`
+  - function supports `{ "dry_run": true }` for safe verification
 - notification scheduling has moved off Vercel Cron to Supabase Cron:
   - job name: `ascend-notification-scheduler`
   - schedule: `0 * * * *`
   - target: `https://iaqutuhcdnsfavefhttc.supabase.co/functions/v1/notification-scheduler`
   - auth headers are built from Supabase Vault secrets `project_url` and `anon_key`
 
-The cron route:
+The daily reset job:
 
 - validates `Authorization: Bearer ${CRON_SECRET}`
 - processes all users with service-role access
