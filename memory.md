@@ -342,6 +342,12 @@ Client helpers: [`lib/notifications.ts`](/C:/Users/Aditya/project/ascend/lib/not
 
 Service worker: [`public/sw.js`](/C:/Users/Aditya/project/ascend/public/sw.js)
 
+Service worker deployment notes:
+
+- `/sw.js` is served with `Cache-Control: no-cache, no-store, must-revalidate` so Android Chrome/PWA installs do not keep a stale worker after deploys
+- the worker calls `skipWaiting()` on install, handles `SKIP_WAITING` messages, and claims clients on activation so the latest push handler takes over after the app is reopened
+- if Android push only appears while the app is open, reopen the deployed PWA once, press `TEST PUSH` to refresh the device subscription, then lock/close the app and test again
+
 Server action bridge: [`app/actions/notifications.ts`](/C:/Users/Aditya/project/ascend/app/actions/notifications.ts)
 
 Edge functions:

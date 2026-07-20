@@ -23,6 +23,10 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   if (!('serviceWorker' in navigator)) return null
   try {
     const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+    await registration.update().catch(() => {})
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: 'SKIP_WAITING' })
+    }
     return registration
   } catch {
     return null
