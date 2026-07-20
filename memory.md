@@ -372,7 +372,8 @@ Important configuration detail:
 
 Important `send-notification` edge-function behavior:
 
-- service-role requests can send notifications to any user for cron and system flows
+- requests authorized with either `CRON_SECRET` or the Supabase service-role key can send notifications to any user for cron and system flows
+- the website server action prefers `CRON_SECRET` for test/manual sends to avoid Vercel/Supabase service-role secret drift
 - VAPID config is required for Web Push sends
 - stale or invalid browser subscriptions should be treated as best-effort failures and cleaned up when safe
 

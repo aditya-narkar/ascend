@@ -21,16 +21,16 @@ type PushActionResult = {
 
 async function dispatchPushNotification(params: PushParams): Promise<PushActionResult> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!supabaseUrl || !serviceRoleKey) {
-    return { success: false, error: 'Missing Supabase service configuration.' }
+  const authSecret = process.env.CRON_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !authSecret) {
+    return { success: false, error: 'Missing Supabase notification configuration.' }
   }
   try {
     const res = await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${serviceRoleKey}`,
+        Authorization: `Bearer ${authSecret}`,
       },
       body: JSON.stringify(params),
     })

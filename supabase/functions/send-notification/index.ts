@@ -17,6 +17,7 @@ const supabaseAdmin = createClient(
 )
 
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+const cronSecret = Deno.env.get('CRON_SECRET') ?? ''
 
 type PushSubscriptionRow = {
   id?: string
@@ -41,6 +42,16 @@ function getPushErrorStatus(err: unknown): number | null {
   return typeof statusCode === 'number' ? statusCode : null
 }
 
+function isAuthorized(authHeader: string | null): boolean {
+  if (!authHeader?.startsWith('Bearer ')) return false
+
+  const token = authHeader.slice('Bearer '.length)
+  return Boolean(
+    (serviceRoleKey && token === serviceRoleKey) ||
+    (cronSecret && token === cronSecret),
+  )
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 })
@@ -48,7 +59,7 @@ Deno.serve(async (req: Request) => {
 
   const authHeader = req.headers.get('Authorization')
 
-  if (authHeader !== `Bearer ${serviceRoleKey}`) {
+  if (!isAuthorized(authHeader)) {
     return new Response('Unauthorized', { status: 401 })
   }
 
