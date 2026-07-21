@@ -21,6 +21,8 @@ type PushSubscriptionRow = {
   subscription: unknown
 }
 
+type ReminderSlot = 'morning' | 'midday' | 'evening' | 'final' | 'none'
+
 function configureWebPush() {
   if (!vapidPublicKey || !vapidPrivateKey || !vapidEmailRaw) {
     throw new Error('Missing VAPID configuration')
@@ -37,6 +39,24 @@ function getPushErrorStatus(err: unknown): number | null {
   if (typeof err !== 'object' || err === null) return null
   const statusCode = (err as { statusCode?: unknown }).statusCode
   return typeof statusCode === 'number' ? statusCode : null
+}
+
+function getISTParts(now: Date): { date: string; hour: number; minute: number } {
+  const ist = new Date(now.getTime() + 5.5 * 60 * 60 * 1000)
+  return {
+    date: ist.toISOString().split('T')[0],
+    hour: ist.getUTCHours(),
+    minute: ist.getUTCMinutes(),
+  }
+}
+
+function getReminderSlot(hour: number, minute: number): ReminderSlot {
+  if (minute !== 0 && minute !== 30) return 'none'
+  if (hour === 9 && minute === 0) return 'morning'
+  if (hour === 14 && minute === 0) return 'midday'
+  if (hour === 20 && minute === 0) return 'evening'
+  if (hour === 23 && minute === 30) return 'final'
+  return 'none'
 }
 
 async function sendToUser(
@@ -64,7 +84,11 @@ async function sendToUser(
 
   for (const sub of subscriptions as PushSubscriptionRow[]) {
     try {
-      await webpush.sendNotification(sub.subscription, payload)
+      await webpush.sendNotification(sub.subscription, payload, {
+        TTL: 12 * 60 * 60,
+        urgency: 'high',
+        topic: tag,
+      })
     } catch (err) {
       const status = getPushErrorStatus(err)
       if ((status === 404 || status === 410) && sub.id) {
@@ -76,8 +100,8 @@ async function sendToUser(
 
 Deno.serve(async () => {
   const now = new Date()
-  const hour = now.getUTCHours()
-  const today = now.toISOString().split('T')[0]
+  const { date: today, hour, minute } = getISTParts(now)
+  const reminderSlot = getReminderSlot(hour, minute)
 
   // Get all users with push subscriptions
   const { data: subscriptions } = await supabase
@@ -130,7 +154,7 @@ Deno.serve(async () => {
       const hoursElapsed = (Date.now() - startMs) / 3600000
       const hoursRemaining = Math.max(0, 12 - hoursElapsed)
 
-      if (hour % 2 === 0) { // Every 2 hours during active hours
+      if (minute === 0 && hour % 2 === 0) {
         if (hour >= 7 && hour < 23) {
           await sendToUser(
             userId,
@@ -146,7 +170,7 @@ Deno.serve(async () => {
       continue
     }
 
-    if (hour === 9 && done === 0) {
+    if (reminderSlot === 'morning' && done === 0) {
       const { count: totalQuests } = await supabase
         .from('quests')
         .select('*', { count: 'exact', head: true })
@@ -160,7 +184,7 @@ Deno.serve(async () => {
         '/dashboard',
       )
       sent++
-    } else if (hour === 14 && done < Math.floor(threshold / 2)) {
+    } else if (reminderSlot === 'midday' && done < Math.floor(threshold / 2)) {
       const { count: total } = await supabase
         .from('quests')
         .select('*', { count: 'exact', head: true })
@@ -175,7 +199,7 @@ Deno.serve(async () => {
         '/dashboard',
       )
       sent++
-    } else if (hour === 20 && done < threshold) {
+    } else if (reminderSlot === 'evening' && done < threshold) {
       const { count: total } = await supabase
         .from('quests')
         .select('*', { count: 'exact', head: true })
@@ -190,13 +214,23 @@ Deno.serve(async () => {
         '/dashboard',
       )
       sent++
-    } else if (hour === 21 && user.current_streak > 3 && done < threshold) {
+    } else if (reminderSlot === 'final' && done < threshold) {
+      const { count: total } = await supabase
+        .from('quests')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('date_assigned', today)
+      const remaining = (total ?? 0) - done
+      const streakText = user.current_streak > 3
+        ? ` ${user.current_streak} day streak is at risk.`
+        : ''
       await sendToUser(
         userId,
-        'Streak At Risk',
-        `${user.current_streak} day streak. Don't let it end tonight. One quest at a time.`,
-        'streak-reminder',
+        'Final Warning',
+        `${remaining} quests still unfinished. Midnight is close.${streakText} Complete the daily task now.`,
+        'final-warning',
         '/dashboard',
+        true,
       )
       sent++
     }

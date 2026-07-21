@@ -91,7 +91,11 @@ Deno.serve(async (req: Request) => {
 
   for (const sub of subscriptions as PushSubscriptionRow[]) {
     try {
-      await webpush.sendNotification(sub.subscription, payload)
+      await webpush.sendNotification(sub.subscription, payload, {
+        TTL: 12 * 60 * 60,
+        urgency: 'high',
+        topic: tag || 'ascend-notification',
+      })
       sent++
     } catch (err) {
       failed++

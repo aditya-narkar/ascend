@@ -385,16 +385,17 @@ Important `send-notification` edge-function behavior:
 
 Scheduled reminder behavior in `notification-scheduler`:
 
-- 9 UTC-hour: morning reminder if 0 quests done
-- 14 UTC-hour: midday reminder if progress is behind
-- 20 UTC-hour: evening reminder if below threshold
-- 21 UTC-hour: streak-at-risk reminder for users with streak > 3 and below threshold
-- every 2 hours during active daytime window: Penalty Zone reminder
+- reminder checks are IST-based, derived inside the edge function from UTC runtime time
+- 09:00 IST: morning reminder if 0 quests done
+- 14:00 IST: midday reminder if progress is behind
+- 20:00 IST: evening reminder if below threshold
+- 23:30 IST: final warning if the daily threshold is still incomplete
+- every 2 hours during the IST active daytime window: Penalty Zone reminder
 
 Important nuance:
 
-- the scheduler uses `now.getUTCHours()` and `today = now.toISOString().split('T')[0]`
-- user-facing copy sounds local-time based, but scheduling is currently UTC-based
+- Supabase Cron invokes the scheduler in UTC, but notification copy and trigger slots are currently aligned to IST
+- scheduled Web Push sends use high urgency and a 12-hour TTL to improve Android background delivery
 
 ## Pages summary
 
@@ -580,7 +581,7 @@ Vercel config: [`vercel.json`](/C:/Users/Aditya/project/ascend/vercel.json)
   - function supports `{ "dry_run": true }` for safe verification
 - notification scheduling has moved off Vercel Cron to Supabase Cron:
   - job name: `ascend-notification-scheduler`
-  - schedule: `0 * * * *`
+  - schedule: `*/30 * * * *`
   - target: `https://iaqutuhcdnsfavefhttc.supabase.co/functions/v1/notification-scheduler`
   - auth headers are built from Supabase Vault secrets `project_url` and `anon_key`
 
