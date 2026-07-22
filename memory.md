@@ -14,7 +14,7 @@ This file is the persistent handoff for future AI contributors. Update it whenev
 - Styling: Tailwind CSS v4 via `@import "tailwindcss"` and `@theme` tokens in [`app/globals.css`](/C:/Users/Aditya/project/ascend/app/globals.css)
 - Auth/data/backend: Supabase
 - Notifications: Web Push via service worker + Supabase Edge Functions
-- Deployment target: Vercel, with a cron hitting `/api/cron/daily-reset`
+- Deployment target: Vercel for the web app; scheduled backend work runs on Supabase Cron + Edge Functions
 
 ## Important repo rules
 
@@ -263,7 +263,7 @@ Core logic lives in:
 - [`lib/streakShield.ts`](/C:/Users/Aditya/project/ascend/lib/streakShield.ts) — `updateStreak`, shield helpers (NEW)
 - [`app/actions/quests.ts`](/C:/Users/Aditya/project/ascend/app/actions/quests.ts)
 - [`app/actions/penalty.ts`](/C:/Users/Aditya/project/ascend/app/actions/penalty.ts)
-- [`app/api/cron/daily-reset/route.ts`](/C:/Users/Aditya/project/ascend/app/api/cron/daily-reset/route.ts)
+- [`supabase/functions/daily-reset/index.ts`](/C:/Users/Aditya/project/ascend/supabase/functions/daily-reset/index.ts)
 - [`app/components/PenaltyZone.tsx`](/C:/Users/Aditya/project/ascend/app/components/PenaltyZone.tsx)
 
 ### Daily result categories
@@ -365,7 +365,6 @@ Notification flow:
 - server action or edge scheduler calls `send-notification`
 - edge function loads the subscription and sends a Web Push payload
 - dashboard shows a persistent notification status panel after browser detection; it displays enable/test controls when possible and blocked/unavailable diagnostics when Android/browser settings prevent Web Push
-- `narkaraditya04@gmail.com` is explicitly allowlisted to always render the dashboard notification panel, even before browser detection finishes
 - the `TEST PUSH` control refreshes the current device subscription, saves it, then sends a real server push to every saved device endpoint for the logged-in user
 
 Important configuration detail:
@@ -547,7 +546,7 @@ Future contributors should be careful not to mix:
 
 - UTC date storage/business logic
 - local-time UI timers
-- UTC-based scheduled notifications
+- IST-based scheduled notifications
 
 ## Environment variables
 
@@ -572,7 +571,7 @@ Vercel config: [`vercel.json`](/C:/Users/Aditya/project/ascend/vercel.json)
 - build command: `npm run build`
 - Next config is ESM-only in [`next.config.mjs`](/C:/Users/Aditya/project/ascend/next.config.mjs); avoid reintroducing duplicate `next.config.js` or `next.config.ts` files.
 - icon generation script is [`scripts/generate-icons.mjs`](/C:/Users/Aditya/project/ascend/scripts/generate-icons.mjs)
-- Vercel Cron is not used for recurring jobs; scheduled backend work runs through Supabase Cron and Edge Functions.
+- Vercel Cron and `/api/cron/*` bridge routes are not used; scheduled backend work runs through Supabase Cron and Edge Functions.
 - daily reset has moved off Vercel Cron to Supabase Cron:
   - job name: `ascend-daily-reset`
   - schedule: `0 0 * * *`
@@ -619,7 +618,7 @@ Avoid flattening this into generic SaaS styling unless explicitly requested.
 - Elite quest assignment logic is inconsistent between `generateDailyQuests` and `ensureTodayQuests`.
 - `cycles.total_days_active` appears in the schema and UI report types, but I did not find active update logic for it.
 - `archetype_quests` remains in schema/seed data but active daily generation comes from `quest_pools`.
-- Notification scheduling logic is UTC-based, while user-facing copy implies day-part reminders.
+- Core date storage is still UTC-based, while reminder delivery is aligned to IST.
 - There is duplicate auth/onboarding redirect logic in both route handling and the root page, so changes to access rules should keep both paths aligned.
 - Parts of this document have been updated incrementally over time; when changing gameplay rules, verify that `memory.md` still matches both the latest code and schema, not just one of them.
 

@@ -96,19 +96,6 @@ export async function saveNotificationSubscription(
       { onConflict: 'user_id,endpoint' },
     )
 
-  if (!error) {
-    return { success: true }
-  }
-
-  // Backward-compatible fallback for databases that have not applied the
-  // multi-device push subscription migration yet.
-  const { error: legacyError } = await admin
-    .from('push_subscriptions')
-    .upsert({ user_id: user.id, subscription }, { onConflict: 'user_id' })
-
-  if (legacyError) {
-    return { success: false, error: `${error.message}; fallback failed: ${legacyError.message}` }
-  }
-
+  if (error) return { success: false, error: error.message }
   return { success: true }
 }

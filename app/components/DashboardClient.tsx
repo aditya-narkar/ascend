@@ -15,7 +15,6 @@ import DailyCompletionSummary from './DailyCompletionSummary'
 import PenaltyZone from './PenaltyZone'
 import CompletionRing from './CompletionRing'
 import StreakCard from './StreakCard'
-import { getUTCDateString, getUTCYesterdayString } from '@/lib/date'
 import type { UserProfile, Stats, Quest, QuestPool, CycleReportData, PoolCategory, PenaltyQuest } from '@/lib/types'
 
 const STAT_LABELS: Record<string, string> = {
@@ -27,8 +26,6 @@ const STAT_COLORS: Record<string, string> = {
 
 type HuntTab = 'all' | 'physical' | 'mental' | 'focus'
 type NotificationPermissionState = NotificationPermission | 'unknown'
-
-const NOTIFICATION_PANEL_EMAILS = new Set(['narkaraditya04@gmail.com'])
 
 const CATEGORY_ICONS: Record<string, string> = {
   physical: 'directions_run',
@@ -101,7 +98,6 @@ export default function DashboardClient({
   const [notificationSupported, setNotificationSupported] = useState(true)
   const [pushSupported, setPushSupported] = useState(true)
   const [securePushContext, setSecurePushContext] = useState(true)
-  const penaltyCheckRan = useRef(false)
 
   // ── Per-quest processing lock helpers ───────────────────────
   const addProcessing = useCallback((id: string) => {
@@ -432,57 +428,6 @@ export default function DashboardClient({
     }
   }
 
-  // ── Client-side daily penalty check (cron fallback) ─────────
-  async function checkAndApplyDailyPenalty() {
-    // Skip if already in penalty zone or in selection phase
-    if (profile.penalty_zone_active || needsSelectionPhase) return
-    // Skip brand-new accounts (< 2 days old) — nothing to penalise yet
-    const daysSinceCreation = Math.floor(
-      (Date.now() - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24),
-    )
-    if (daysSinceCreation < 2) return
-    const today = getUTCDateString()
-    const yesterday = getUTCYesterdayString()
-    // Skip if already active today (quests completed)
-    if (profile.last_active_date === today) return
-
-    const supabase = createBrowserClient()
-    const { count } = await supabase
-      .from('quests')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', profile.id)
-      .eq('date_assigned', yesterday)
-      .eq('is_completed', true)
-
-    if (count === null) return // query failed — skip
-    if (count > 0) return      // quests were completed yesterday — no penalty
-
-    const newFailures = (profile.consecutive_failures ?? 0) + 1
-    console.log('[ASCEND] Penalty check: consecutive_failures →', newFailures)
-
-    const updates: Record<string, unknown> = { consecutive_failures: newFailures }
-
-    if (newFailures >= 3) {
-      updates.penalty_tier = 3
-      updates.penalty_zone_active = true
-      updates.penalty_zone_started_at = new Date().toISOString()
-      console.log('[ASCEND] Penalty Zone activated')
-    } else {
-      updates.penalty_tier = newFailures >= 2 ? 2 : 1
-    }
-
-    await supabase.from('users').update(updates).eq('id', profile.id)
-    router.refresh()
-  }
-
-  // Run penalty check once on mount
-  useEffect(() => {
-    if (penaltyCheckRan.current) return
-    penaltyCheckRan.current = true
-    checkAndApplyDailyPenalty()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   async function handleCompletePenaltyQuest(pq: PenaltyQuest) {
     if (penaltyProcessingId) return
     setPenaltyProcessingId(pq.id)
@@ -565,11 +510,10 @@ export default function DashboardClient({
     )
   }
 
-  const forceNotificationPanel = NOTIFICATION_PANEL_EMAILS.has((profile.email ?? '').toLowerCase())
   const notificationUnavailable = notificationUiReady && (!notificationSupported || !pushSupported || !securePushContext)
   const notificationsBlocked = notificationPermission === 'denied'
-  const canEnableNotifications = (notificationUiReady || forceNotificationPanel) && !notificationUnavailable && !notificationsBlocked && !notificationsEnabled
-  const showNotificationCard = forceNotificationPanel || notificationUiReady || showNotificationBanner || notificationsEnabled
+  const canEnableNotifications = notificationUiReady && !notificationUnavailable && !notificationsBlocked && !notificationsEnabled
+  const showNotificationCard = notificationUiReady || showNotificationBanner || notificationsEnabled
   const notificationCardTitle = notificationUnavailable
     ? 'SYSTEM ALERTS UNAVAILABLE'
     : notificationsBlocked
