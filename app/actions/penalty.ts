@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPushNotification } from '@/app/actions/notifications'
 import { getRankFromLevel, getXPToNextLevel } from '@/lib/utils'
 import { getUTCDateString } from '@/lib/date'
@@ -81,7 +82,7 @@ export async function failPenaltyZone() {
     })
     .eq('id', user.id)
 
-  await supabase.rpc('apply_all_stat_penalty', {
+  await createAdminClient().rpc('apply_all_stat_penalty', {
     p_user_id: user.id,
     p_amount: 10,
   })

@@ -342,12 +342,23 @@ export default function DashboardClient({
       // Uncomplete: instant rollback, background sync
       setQuestList((prev) => prev.map((q) => q.id === quest.id ? { ...q, is_completed: false } : q))
 
+      const rollback = (message?: string) => {
+        removeProcessing(quest.id)
+        setQuestList((prev) => prev.map((q) => q.id === quest.id ? { ...q, is_completed: true } : q))
+        if (message) {
+          if (msgTimer.current) clearTimeout(msgTimer.current)
+          setSystemMessage(message)
+          msgTimer.current = setTimeout(() => setSystemMessage(null), 3200)
+        }
+      }
+
       uncompleteQuest(quest.id)
-        .then(() => { removeProcessing(quest.id); router.refresh() })
-        .catch(() => {
+        .then((result) => {
+          if (!result.success) return rollback(result.error)
           removeProcessing(quest.id)
-          setQuestList((prev) => prev.map((q) => q.id === quest.id ? { ...q, is_completed: true } : q))
+          router.refresh()
         })
+        .catch(() => rollback())
     }
   }, [processingIds, questList, kaizenThreshold, addProcessing, removeProcessing, profile, router])
 

@@ -282,6 +282,12 @@ Core logic lives in:
 - Shield state shown in `StreakCard` component
 - When shield is consumed or awarded, `users.pending_system_message` is set and cleared on next dashboard load
 
+### Streak ownership and quest undo rules
+
+- `updateStreak()` (via `checkDailyStreak` on dashboard load and the `daily-reset` cron) is the **only** writer of `current_streak`, `best_streak`, `cycle_days_completed`, shield state and `last_active_date`. Both skip when `last_active_date === today`, so each day is processed once. `completeQuest` must not touch these (it used to, which double-counted every successful day). Consequence: today's progress shows in the streak only after the day rolls over.
+- `completeQuest` / `uncompleteQuest` claim the quest with a conditional update (`.eq('is_completed', …).select('id')`) so concurrent calls can't double-award or double-refund. In `completeQuest` the completion counts are read *after* the quest is marked done, so they already include it (no `+1`).
+- `uncompleteQuest` refunds XP and the base `stat_reward` (via `decrement_stat`), only for today's quests, and refuses (returns `{ success: false, error }`) when `current_xp < xp_reward` because a level-up already banked that XP. The +2 level-up stat bonus is not reversed. `cycles.total_completions` is not decremented (it is write-only; the cycle report counts from `quests`).
+
 ### Current streak processing implementation
 
 - `checkDailyStreak()` in [`app/actions/quests.ts`](/C:/Users/Aditya/project/ascend/app/actions/quests.ts) now delegates streak resolution to `updateStreak()` in [`lib/streakShield.ts`](/C:/Users/Aditya/project/ascend/lib/streakShield.ts)
@@ -533,6 +539,8 @@ General model:
 - `decrement_stat`
 - `apply_all_stat_penalty`
 - `increment_cycle_completions`
+
+These are `SECURITY DEFINER` and take a caller-supplied `p_user_id`, so they are **service-role only**: [`supabase-rpc-lockdown.sql`](/C:/Users/Aditya/project/ascend/supabase-rpc-lockdown.sql) revokes `execute` from `public/anon/authenticated`. Server actions must call them via `createAdminClient()` (after verifying the user with `auth.getUser()`); edge functions already use the service role. Never call them with the user-session client. Deploy the app change before running the SQL.
 
 ## Date and time conventions
 

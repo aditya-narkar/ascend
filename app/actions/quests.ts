@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   formatTodayDate,
   getRankFromLevel,
@@ -435,10 +436,15 @@ export async function completeQuest(questId: string): Promise<QuestCompletionRes
 
   if (!quest || quest.is_completed) return { success: false, leveledUp: false }
 
-  await supabase
+  // Atomic claim: concurrent calls for the same quest can't both pass and double-award.
+  const { data: claimed } = await supabase
     .from('quests')
     .update({ is_completed: true, date_completed: new Date().toISOString() })
     .eq('id', questId)
+    .eq('is_completed', false)
+    .select('id')
+
+  if (!claimed?.length) return { success: false, leveledUp: false }
 
   const { data: profile } = await supabase
     .from('users')
@@ -467,7 +473,6 @@ export async function completeQuest(questId: string): Promise<QuestCompletionRes
   const rankChanged = newRank !== previousRank
   const eliteUnlocked = previousRank === 'F' && newRank === 'E'
 
-  // Streak logic
   const today = formatTodayDate()
 
   const { data: activeSelection } = await supabase
@@ -505,8 +510,8 @@ export async function completeQuest(questId: string): Promise<QuestCompletionRes
         .neq('quest_type', 'elite'),
     ])
 
-  // +1 because we just marked the quest complete
-  const completedCount = (completedToday ?? 0) + 1
+  // The counts above already include this quest (it was marked complete first).
+  const completedCount = completedToday ?? 0
   const regularCompletedCount = quest.quest_type === 'elite'
     ? completedRegularToday ?? 0
     : completedRegularToday ?? 1
@@ -516,22 +521,8 @@ export async function completeQuest(questId: string): Promise<QuestCompletionRes
       : Math.max(0, regularCompletedCount - 1)
   const totalRegularCount = totalRegularToday ?? 0
 
-  let newStreak = profile.current_streak
-  let newBestStreak = profile.best_streak
-  const lastActive = profile.last_active_date
-
-  if (completedCount >= threshold) {
-    const yesterdayStr = getUTCYesterdayString()
-
-    if (lastActive === yesterdayStr || lastActive === today) {
-      if (lastActive !== today) newStreak += 1
-    } else {
-      newStreak = 1
-    }
-
-    if (newStreak > newBestStreak) newBestStreak = newStreak
-  }
-
+  // Streak, best_streak, cycle_days_completed and last_active_date are owned by
+  // updateStreak() at the day boundary — touching them here double-counts the day.
   await supabase
     .from('users')
     .update({
@@ -540,16 +531,13 @@ export async function completeQuest(questId: string): Promise<QuestCompletionRes
       level: newLevel,
       xp_to_next_level: newXPToNext,
       rank: newRank,
-      current_streak: newStreak,
-      best_streak: newBestStreak,
-      last_active_date: today,
     })
     .eq('id', user.id)
 
   // Stat reward (+2 bonus on level up)
   if (quest.stat_target && quest.stat_reward) {
     const increment = leveledUp ? quest.stat_reward + 2 : quest.stat_reward
-    await supabase.rpc('increment_stat', {
+    await createAdminClient().rpc('increment_stat', {
       p_user_id: user.id,
       p_stat: quest.stat_target,
       p_amount: increment,
@@ -565,7 +553,7 @@ export async function completeQuest(questId: string): Promise<QuestCompletionRes
         { onConflict: 'user_id,cycle_number', ignoreDuplicates: false },
       )
 
-    await supabase.rpc('increment_cycle_completions', {
+    await createAdminClient().rpc('increment_cycle_completions', {
       p_user_id: user.id,
       p_cycle_number: cycleNumber,
     })
@@ -650,10 +638,10 @@ export async function completeQuest(questId: string): Promise<QuestCompletionRes
 
 // ── Quest un-complete ─────────────────────────────────────────
 
-export async function uncompleteQuest(questId: string) {
+export async function uncompleteQuest(questId: string): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
+  if (!user) return { success: false, error: 'Not authenticated.' }
 
   const { data: quest } = await supabase
     .from('quests')
@@ -662,30 +650,54 @@ export async function uncompleteQuest(questId: string) {
     .eq('user_id', user.id)
     .single()
 
-  if (!quest || !quest.is_completed) return
-
-  await supabase
-    .from('quests')
-    .update({ is_completed: false, date_completed: null })
-    .eq('id', questId)
+  if (!quest || !quest.is_completed) return { success: false }
+  if (quest.date_assigned !== formatTodayDate()) {
+    return { success: false, error: "Only today's quests can be undone." }
+  }
 
   const { data: profile } = await supabase
     .from('users')
-    .select('*')
+    .select('current_xp, total_xp')
     .eq('id', user.id)
     .single()
 
-  if (!profile) return
+  if (!profile) return { success: false }
 
-  const newCurrentXP = Math.max(0, profile.current_xp - quest.xp_reward)
-  const newTotalXP = Math.max(0, profile.total_xp - quest.xp_reward)
+  // If a level-up already consumed this quest's XP, undoing would let the user
+  // re-earn it (and the level) for free — refuse instead of clamping at 0.
+  if (profile.current_xp < quest.xp_reward) {
+    return { success: false, error: "Level-up already banked. This quest can't be undone." }
+  }
+
+  // Atomic claim so a double-submit can't refund twice.
+  const { data: reverted } = await supabase
+    .from('quests')
+    .update({ is_completed: false, date_completed: null })
+    .eq('id', questId)
+    .eq('is_completed', true)
+    .select('id')
+
+  if (!reverted?.length) return { success: false }
 
   await supabase
     .from('users')
-    .update({ current_xp: newCurrentXP, total_xp: newTotalXP })
+    .update({
+      current_xp: profile.current_xp - quest.xp_reward,
+      total_xp: Math.max(0, profile.total_xp - quest.xp_reward),
+    })
     .eq('id', user.id)
 
+  // Reverse the base stat reward (the +2 level-up bonus is one-time and stays).
+  if (quest.stat_target && quest.stat_reward) {
+    await createAdminClient().rpc('decrement_stat', {
+      p_user_id: user.id,
+      p_stat: quest.stat_target,
+      p_amount: quest.stat_reward,
+    })
+  }
+
   revalidatePath('/dashboard')
+  return { success: true }
 }
 
 // ── Save quest selections (start new cycle) ───────────────────
