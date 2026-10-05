@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { gameDate } from '@/lib/date'
 import type { Stats, Quest, Cycle } from '@/lib/types'
 
 // ── Local row shapes ─────────────────────────────────────────────────────────
@@ -89,10 +90,6 @@ const STAT_DEFS = [
   { key: 'energy',       color: '#FF9F50' },
 ] as const
 
-function utcStr(d: Date) {
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
-}
-
 export default function UserCard({
   user, userStats, todayQuests, summaries, penaltyHistory, allQuests, cycle,
 }: UserCardProps) {
@@ -108,12 +105,9 @@ export default function UserCard({
     (now.getTime() - new Date(user.created_at).getTime()) / (1000 * 60 * 60 * 24),
   )
 
-  // Build 30-day activity grid (UTC-safe)
+  // Build 30-day activity grid (game days)
   const thirtyDays = Array.from({ length: 30 }, (_, i) => {
-    const target = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (29 - i)),
-    )
-    const dateStr = utcStr(target)
+    const dateStr = gameDate(i - 29)
 
     const summary    = summaries.find((s) => s.date === dateStr)
     const dayQuests  = allQuests.filter((q) => q.date_assigned === dateStr)
@@ -130,7 +124,7 @@ export default function UserCard({
       : summary?.weak_day || completed > 0 ? 'weak'
       : 'failed'
 
-    return { date: dateStr, day: target.getUTCDate(), summary, completed, total, xpEarned, penalty, status }
+    return { date: dateStr, day: Number(dateStr.slice(8)), summary, completed, total, xpEarned, penalty, status }
   })
 
   // ── Render ─────────────────────────────────────────────────────────────────

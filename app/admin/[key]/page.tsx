@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getUTCDateString } from '@/lib/date'
+import { gameDate } from '@/lib/date'
 import RefreshButton from './RefreshButton'
 import UserCard from '@/components/admin/UserCard'
 import type { UserProfile, Stats, Quest, Cycle } from '@/lib/types'
@@ -47,16 +47,10 @@ export default async function AdminPage({
   }
 
   const supabaseAdmin = createAdminClient()
-  const today = getUTCDateString()
+  const today = gameDate()
+  const thirtyDaysAgoStr = gameDate(-30)
 
-  // 30-day window (UTC-safe)
-  const now = new Date()
-  const thirtyDaysAgoDate = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 30),
-  )
-  const thirtyDaysAgoStr = `${thirtyDaysAgoDate.getUTCFullYear()}-${String(thirtyDaysAgoDate.getUTCMonth() + 1).padStart(2, '0')}-${String(thirtyDaysAgoDate.getUTCDate()).padStart(2, '0')}`
-
-  console.log('[admin] today UTC:', today)
+  console.log('[admin] game day:', today)
   console.log('[admin] 30-day window from:', thirtyDaysAgoStr)
 
   const [

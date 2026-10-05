@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPushNotification } from '@/app/actions/notifications'
 import { getRankFromLevel, getXPToNextLevel } from '@/lib/utils'
-import { getUTCDateString } from '@/lib/date'
+import { gameDate } from '@/lib/date'
 
 export async function completePenaltyZone() {
   const supabase = await createClient()
@@ -35,7 +35,7 @@ export async function completePenaltyZone() {
   try {
     await supabase.from('penalty_history').insert({
       user_id: user.id,
-      date: getUTCDateString(),
+      date: gameDate(),
       penalty_tier: 3,
       penalty_zone_triggered: true,
       penalty_zone_completed: true,
@@ -91,7 +91,7 @@ export async function failPenaltyZone() {
   try {
     await supabase.from('penalty_history').insert({
       user_id: user.id,
-      date: getUTCDateString(),
+      date: gameDate(),
       penalty_tier: 3,
       xp_lost: xpLost,
       level_before: levelBefore,
@@ -175,7 +175,7 @@ export async function completePenaltyQuest(penaltyQuestId: string) {
   try {
     await supabase.from('penalty_history').insert({
       user_id: user.id,
-      date: getUTCDateString(),
+      date: gameDate(),
       penalty_tier: 2,
       penalty_quest_assigned: true,
       penalty_quest_completed: true,

@@ -4,13 +4,12 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
-  formatTodayDate,
   getRankFromLevel,
   getXPToNextLevel,
   getKaizenThreshold,
   getWeekNumber,
 } from '@/lib/utils'
-import { getUTCYesterdayString, getUTCFutureDateString } from '@/lib/date'
+import { gameDate } from '@/lib/date'
 import { updateStreak } from '@/lib/streakShield'
 import { sendPushNotification } from '@/app/actions/notifications'
 import type { QuestCompletionResult, Quest, QuestPool } from '@/lib/types'
@@ -24,7 +23,7 @@ const generatedDates = new Map<string, string>()  // userId → lastGeneratedDat
 
 export async function generateDailyQuests(userId: string) {
   const supabase = await createClient()
-  const today = formatTodayDate()
+  const today = gameDate()
 
   // Clean up stale incomplete quests from previous days
   await supabase
@@ -142,7 +141,7 @@ export async function generateDailyQuests(userId: string) {
 
 export async function ensureTodayQuests(userId: string): Promise<{ needsSelection: boolean; quests: Quest[] }> {
   const supabase = await createClient()
-  const today = formatTodayDate()
+  const today = gameDate()
 
   async function fetchToday(): Promise<Quest[]> {
     const { data, error } = await supabase
@@ -318,7 +317,7 @@ export async function ensureTodayQuests(userId: string): Promise<{ needsSelectio
 
 export async function checkAndExpireCycles(userId: string) {
   const supabase = await createClient()
-  const today = formatTodayDate()
+  const today = gameDate()
 
   const { data: expired } = await supabase
     .from('quest_selections')
@@ -357,7 +356,7 @@ export async function checkAndExpireCycles(userId: string) {
 
 export async function checkDailyStreak(userId: string) {
   const supabase = await createClient()
-  const today = formatTodayDate()
+  const today = gameDate()
 
   const { data: profile } = await supabase
     .from('users')
@@ -367,16 +366,17 @@ export async function checkDailyStreak(userId: string) {
 
   if (!profile || profile.last_active_date === today) return
 
-  const yesterdayStr = getUTCYesterdayString()
+  const yesterdayStr = gameDate(-1)
 
-  const { count: yesterdayCount } = await supabase
+  const { data: yesterdayDone } = await supabase
     .from('quests')
-    .select('*', { count: 'exact', head: true })
+    .select('xp_reward')
     .eq('user_id', userId)
     .eq('date_assigned', yesterdayStr)
     .eq('is_completed', true)
 
-  const completed = yesterdayCount ?? 0
+  const completed = yesterdayDone?.length ?? 0
+  const xpEarned = (yesterdayDone ?? []).reduce((sum, q) => sum + q.xp_reward, 0)
 
   const { data: activeSelection } = await supabase
     .from('quest_selections')
@@ -411,7 +411,7 @@ export async function checkDailyStreak(userId: string) {
       user_id: userId,
       date: yesterdayStr,
       quests_completed: completed,
-      total_xp_earned: 0,
+      total_xp_earned: xpEarned,
       streak_maintained: streakMaintained,
       weak_day: weakDay,
       penalty_triggered: false,
@@ -473,7 +473,7 @@ export async function completeQuest(questId: string): Promise<QuestCompletionRes
   const rankChanged = newRank !== previousRank
   const eliteUnlocked = previousRank === 'F' && newRank === 'E'
 
-  const today = formatTodayDate()
+  const today = gameDate()
 
   const { data: activeSelection } = await supabase
     .from('quest_selections')
@@ -487,11 +487,11 @@ export async function completeQuest(questId: string): Promise<QuestCompletionRes
   const cycleNumber = activeSelection?.cycle_number ?? 1
   const threshold = getKaizenThreshold(cycleNumber)
 
-  const [{ count: completedToday }, { count: completedRegularToday }, { count: totalRegularToday }] =
+  const [{ data: completedTodayRows }, { count: completedRegularToday }, { count: totalRegularToday }] =
     await Promise.all([
       supabase
         .from('quests')
-        .select('*', { count: 'exact', head: true })
+        .select('xp_reward')
         .eq('user_id', user.id)
         .eq('date_assigned', today)
         .eq('is_completed', true),
@@ -511,7 +511,8 @@ export async function completeQuest(questId: string): Promise<QuestCompletionRes
     ])
 
   // The counts above already include this quest (it was marked complete first).
-  const completedCount = completedToday ?? 0
+  const completedCount = completedTodayRows?.length ?? 0
+  const xpEarnedToday = (completedTodayRows ?? []).reduce((sum, q) => sum + q.xp_reward, 0)
   const regularCompletedCount = quest.quest_type === 'elite'
     ? completedRegularToday ?? 0
     : completedRegularToday ?? 1
@@ -559,20 +560,13 @@ export async function completeQuest(questId: string): Promise<QuestCompletionRes
     })
   }
 
-  // Save daily summary (ignore error if table not yet created)
-  const { data: existingSummary } = await supabase
-    .from('daily_summary')
-    .select('total_xp_earned')
-    .eq('user_id', user.id)
-    .eq('date', today)
-    .maybeSingle()
-
+  // Save daily summary. The day-boundary jobs overwrite it with the final numbers.
   await supabase.from('daily_summary').upsert(
     {
       user_id: user.id,
       date: today,
       quests_completed: completedCount,
-      total_xp_earned: (existingSummary?.total_xp_earned ?? 0) + quest.xp_reward,
+      total_xp_earned: xpEarnedToday,
       streak_maintained: completedCount >= threshold,
       weak_day: completedCount > 0 && completedCount < threshold,
       penalty_triggered: false,
@@ -651,7 +645,7 @@ export async function uncompleteQuest(questId: string): Promise<{ success: boole
     .single()
 
   if (!quest || !quest.is_completed) return { success: false }
-  if (quest.date_assigned !== formatTodayDate()) {
+  if (quest.date_assigned !== gameDate()) {
     return { success: false, error: "Only today's quests can be undone." }
   }
 
@@ -709,8 +703,8 @@ export async function saveQuestSelections(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated.' }
 
-  const today = formatTodayDate()
-  const expiresStr = getUTCFutureDateString(21)
+  const today = gameDate()
+  const expiresStr = gameDate(21)
 
   const { data: lastCycle } = await supabase
     .from('cycles')

@@ -1,24 +1,15 @@
-// All date strings in this app are UTC ISO dates (YYYY-MM-DD).
-// Never use local date methods — they produce IST dates on the dev machine
-// which differ from UTC dates for the first 5.5 hours of each IST day.
+// The game day is an IST (UTC+5:30) calendar day, as 'YYYY-MM-DD'. Quests, streaks,
+// cycles, the daily-reset cron (18:30 UTC = 00:00 IST) and the reminder slots all roll
+// over at 00:00 IST. Never use local date methods — the server runs in UTC.
+// ponytail: fixed offset; add a users.timezone column if anyone outside India joins.
+// supabase/functions/daily-reset/index.ts keeps a copy of gameDate() — keep them in sync.
+const GAME_TZ_OFFSET_MS = 5.5 * 60 * 60 * 1000
+const DAY_MS = 24 * 60 * 60 * 1000
 
-export function getUTCDateString(): string {
-  const now = new Date()
-  const year = now.getUTCFullYear()
-  const month = String(now.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(now.getUTCDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+export function gameDate(daysFromToday = 0, now = Date.now()): string {
+  return new Date(now + GAME_TZ_OFFSET_MS + daysFromToday * DAY_MS).toISOString().slice(0, 10)
 }
 
-export function getUTCYesterdayString(): string {
-  const now = new Date()
-  // Subtract 1 day entirely in UTC to avoid DST/local-offset edge cases
-  const yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1))
-  return `${yesterday.getUTCFullYear()}-${String(yesterday.getUTCMonth() + 1).padStart(2, '0')}-${String(yesterday.getUTCDate()).padStart(2, '0')}`
-}
-
-export function getUTCFutureDateString(daysAhead: number): string {
-  const now = new Date()
-  const future = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + daysAhead))
-  return `${future.getUTCFullYear()}-${String(future.getUTCMonth() + 1).padStart(2, '0')}-${String(future.getUTCDate()).padStart(2, '0')}`
+export function msUntilGameDayEnds(now = Date.now()): number {
+  return DAY_MS - ((now + GAME_TZ_OFFSET_MS) % DAY_MS)
 }

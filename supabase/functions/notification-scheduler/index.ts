@@ -208,7 +208,7 @@ Deno.serve(async () => {
       const remaining = (total ?? 0) - done
       await sendToUser(
         userId,
-        '3 Hours Remaining',
+        '4 Hours Remaining',
         `${remaining} quests unresolved. The system is watching. Finish the hunt.`,
         'evening-reminder',
         '/dashboard',

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { formatTodayDate } from '@/lib/utils'
+import { gameDate } from '@/lib/date'
 import type { UserProfile, Stats, QuestSelection } from '@/lib/types'
 
 const STAT_CONFIG = [
@@ -29,7 +29,7 @@ export default async function StatsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const today = formatTodayDate()
+  const today = gameDate()
 
   const [profileRes, statsRes, todayQuestsRes, activeSelsRes] = await Promise.all([
     supabase.from('users').select('*').eq('id', user.id).single(),

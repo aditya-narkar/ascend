@@ -216,7 +216,7 @@ Selection rules:
 Cycle expiry:
 
 - cycles are treated as 21 days long
-- `expires_date` is set with `getUTCFutureDateString(21)`
+- `expires_date` is set with `gameDate(21)`
 - stale active selections are expired both on dashboard load and in the daily cron route
 
 ## XP, levels, ranks, and stats
@@ -546,15 +546,11 @@ These are `SECURITY DEFINER` and take a caller-supplied `p_user_id`, so they are
 
 Very important:
 
-- The project intentionally uses UTC date strings in `YYYY-MM-DD` format for app logic.
-- [`lib/date.ts`](/C:/Users/Aditya/project/ascend/lib/date.ts) explicitly warns against local date methods because the dev machine runs in IST and can drift from UTC dates early in the day.
-- However, some UI countdowns and the Penalty Zone rest window use local browser time.
-
-Future contributors should be careful not to mix:
-
-- UTC date storage/business logic
-- local-time UI timers
-- IST-based scheduled notifications
+- The "game day" is an **IST (UTC+5:30) calendar day** as a `YYYY-MM-DD` string. Quests (`date_assigned`), streaks, cycles, `daily_summary` and the daily-reset cron all roll over at 00:00 IST.
+- Get dates only from `gameDate(daysFromToday = 0)` in [`lib/date.ts`](/C:/Users/Aditya/project/ascend/lib/date.ts); the dashboard countdown uses `msUntilGameDayEnds()`. Never use local or UTC date methods for game logic (the server runs in UTC). `supabase/functions/daily-reset/index.ts` has a copy of `gameDate()` — keep them in sync. The offset is a fixed constant; add a `users.timezone` column if anyone outside India joins.
+- `node --experimental-strip-types scripts/check-date.mjs` asserts the boundary behavior.
+- Still local-time by design: the Penalty Zone rest window (23:00-07:00 device time).
+- Before the IST switch the game day was UTC (rollover at 05:30 IST). Existing dates stay valid if the switch is deployed between ~06:00 and ~23:30 IST (see `supabase-game-day-ist.sql`).
 
 ## Environment variables
 
@@ -582,7 +578,7 @@ Vercel config: [`vercel.json`](/C:/Users/Aditya/project/ascend/vercel.json)
 - Vercel Cron and `/api/cron/*` bridge routes are not used; scheduled backend work runs through Supabase Cron and Edge Functions.
 - daily reset has moved off Vercel Cron to Supabase Cron:
   - job name: `ascend-daily-reset`
-  - schedule: `0 0 * * *`
+  - schedule: `30 18 * * *` (00:00 IST; changed from `0 0 * * *` by [`supabase-game-day-ist.sql`](/C:/Users/Aditya/project/ascend/supabase-game-day-ist.sql))
   - target: `https://iaqutuhcdnsfavefhttc.supabase.co/functions/v1/daily-reset`
   - auth header is built from Supabase Vault secret `cron_secret`
   - function supports `{ "dry_run": true }` for safe verification
@@ -626,7 +622,6 @@ Avoid flattening this into generic SaaS styling unless explicitly requested.
 - Elite quest assignment logic is inconsistent between `generateDailyQuests` and `ensureTodayQuests`.
 - `cycles.total_days_active` appears in the schema and UI report types, but I did not find active update logic for it.
 - `archetype_quests` remains in schema/seed data but active daily generation comes from `quest_pools`.
-- Core date storage is still UTC-based, while reminder delivery is aligned to IST.
 - There is duplicate auth/onboarding redirect logic in both route handling and the root page, so changes to access rules should keep both paths aligned.
 - Parts of this document have been updated incrementally over time; when changing gameplay rules, verify that `memory.md` still matches both the latest code and schema, not just one of them.
 

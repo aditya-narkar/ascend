@@ -25,15 +25,9 @@ type StreakResult = {
   shieldAwarded: boolean
 }
 
-function getUTCDateString(): string {
-  const now = new Date()
-  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`
-}
-
-function getUTCYesterdayString(): string {
-  const now = new Date()
-  const yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1))
-  return `${yesterday.getUTCFullYear()}-${String(yesterday.getUTCMonth() + 1).padStart(2, '0')}-${String(yesterday.getUTCDate()).padStart(2, '0')}`
+// Game day = IST calendar day. Copy of gameDate() in lib/date.ts — keep them in sync.
+function gameDate(daysFromToday = 0): string {
+  return new Date(Date.now() + 5.5 * 3600 * 1000 + daysFromToday * 86400 * 1000).toISOString().slice(0, 10)
 }
 
 function getRankFromLevel(level: number): string {
@@ -71,7 +65,7 @@ async function updateStreak(
 
   if (!user) return { shieldConsumed: false, shieldAwarded: false }
 
-  const today = getUTCDateString()
+  const today = gameDate()
   const updates: Record<string, unknown> = { last_active_date: today }
   let shieldConsumed = false
   let shieldAwarded = false
@@ -147,8 +141,8 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Unauthorized' }, 401)
   }
 
-  const today = getUTCDateString()
-  const yesterday = getUTCYesterdayString()
+  const today = gameDate()
+  const yesterday = gameDate(-1)
   const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {}
 
   const { data: users } = await supabase
@@ -257,14 +251,15 @@ Deno.serve(async (req: Request) => {
       continue
     }
 
-    const { count: yesterdayCount } = await supabase
+    const { data: yesterdayDone } = await supabase
       .from('quests')
-      .select('*', { count: 'exact', head: true })
+      .select('xp_reward')
       .eq('user_id', user.id)
       .eq('date_assigned', yesterday)
       .eq('is_completed', true)
 
-    const completed = yesterdayCount ?? 0
+    const completed = yesterdayDone?.length ?? 0
+    const xpEarned = (yesterdayDone ?? []).reduce((sum: number, q: { xp_reward: number }) => sum + q.xp_reward, 0)
 
     const { data: activeSel } = await supabase
       .from('quest_selections')
@@ -432,7 +427,7 @@ Deno.serve(async (req: Request) => {
         user_id: user.id,
         date: yesterday,
         quests_completed: completed,
-        total_xp_earned: 0,
+        total_xp_earned: xpEarned,
         streak_maintained: streakMaintained,
         weak_day: weakDay,
         penalty_triggered: penaltyTriggered,

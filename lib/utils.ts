@@ -153,11 +153,6 @@ export function getDayOfYear(date: Date): number {
   return Math.floor(diff / (1000 * 60 * 60 * 24))
 }
 
-export function formatTodayDate(): string {
-  const now = new Date()
-  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`
-}
-
 export function getMonarchProgress(level: number): number {
   return Math.min(100, Math.floor((level / 100) * 100))
 }

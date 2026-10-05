@@ -8,6 +8,7 @@ import { completePenaltyQuest } from '@/app/actions/penalty'
 import { saveNotificationSubscription, sendTestPushNotification } from '@/app/actions/notifications'
 import { registerServiceWorker, subscribeUserToPush } from '@/lib/notifications'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
+import { gameDate, msUntilGameDayEnds } from '@/lib/date'
 import CycleReport from './CycleReport'
 import SelectionPhase from './SelectionPhase'
 import LevelUpModal from './LevelUpModal'
@@ -38,11 +39,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 }
 
 function formatHuntDate(): string {
-  const d = new Date()
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}.${m}.${day}`
+  return gameDate().replaceAll('-', '.')
 }
 
 interface Props {
@@ -256,9 +253,7 @@ export default function DashboardClient({
   useEffect(() => {
     function tick() {
       const now = new Date()
-      const midnight = new Date(now)
-      midnight.setHours(24, 0, 0, 0)
-      const diff = midnight.getTime() - now.getTime()
+      const diff = msUntilGameDayEnds(now.getTime())
       const h = Math.floor(diff / 3600000)
       const m = Math.floor((diff % 3600000) / 60000)
       const s = Math.floor((diff % 60000) / 1000)

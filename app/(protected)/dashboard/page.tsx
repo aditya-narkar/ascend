@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { ensureTodayQuests, checkDailyStreak, checkAndExpireCycles } from '@/app/actions/quests'
-import { getMonarchProgress, formatTodayDate, getKaizenThreshold } from '@/lib/utils'
+import { getMonarchProgress, getKaizenThreshold } from '@/lib/utils'
+import { gameDate } from '@/lib/date'
 import DashboardClient from '@/app/components/DashboardClient'
 import type { UserProfile, Stats, Quest, QuestPool, QuestSelection, CycleReportData, PoolCategory, PenaltyQuest } from '@/lib/types'
 
@@ -10,7 +11,7 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const today = formatTodayDate()
+  const today = gameDate()
 
   // Fetch all independent data in one parallel round-trip
   const [profileRes, statsRes, activeSelsRes, lastCycleRes] = await Promise.all([

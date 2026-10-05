@@ -1,4 +1,4 @@
-import { getUTCDateString } from '@/lib/date'
+import { gameDate } from '@/lib/date'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { UserProfile } from '@/lib/types'
 
@@ -22,7 +22,7 @@ export async function checkAndAwardShield(userId: string, supabase: SupabaseClie
       .from('users')
       .update({
         streak_shield_active: true,
-        last_shield_earned_date: getUTCDateString(),
+        last_shield_earned_date: gameDate(),
       })
       .eq('id', userId)
 
@@ -37,7 +37,7 @@ export async function consumeShield(userId: string, supabase: SupabaseClient) {
     .from('users')
     .update({
       streak_shield_active: false,
-      streak_shield_used_date: getUTCDateString(),
+      streak_shield_used_date: gameDate(),
     })
     .eq('id', userId)
 }
@@ -71,7 +71,7 @@ export async function updateStreak(
 
   if (!user) return { shieldConsumed: false, shieldAwarded: false }
 
-  const today = getUTCDateString()
+  const today = gameDate()
   const updates: Record<string, unknown> = { last_active_date: today }
   let shieldConsumed = false
   let shieldAwarded = false
