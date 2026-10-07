@@ -50,23 +50,24 @@ export default function ForgotPasswordPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs text-text-secondary tracking-widest mb-1.5">
+              <label htmlFor="email" className="block text-xs text-text-secondary tracking-widest mb-1.5">
                 EMAIL
               </label>
               <input
+                id="email"
                 name="email"
                 type="email"
                 required
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-bg-secondary border border-border rounded-sm px-3 py-2.5 text-sm text-text-primary placeholder-text-secondary/40 focus:outline-none focus:border-aura-primary transition-colors"
+                className="w-full bg-bg-secondary border border-border rounded-sm px-3 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:border-aura-primary transition-colors"
                 placeholder="hunter@domain.com"
               />
             </div>
 
             {error && (
-              <p className="text-xs text-red-400 tracking-wide border border-red-400/20 bg-red-400/5 px-3 py-2 rounded-sm">
+              <p role="alert" className="text-xs text-red-400 tracking-wide border border-red-400/20 bg-red-400/5 px-3 py-2 rounded-sm">
                 {error}
               </p>
             )}
@@ -94,7 +95,7 @@ export default function ForgotPasswordPage() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-text-secondary/40 mt-6 tracking-widest">
+        <p className="text-center text-xs text-text-secondary mt-6 tracking-widest">
           SYS_RECOVERY v1.0.0
         </p>
       </div>

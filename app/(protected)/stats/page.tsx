@@ -126,7 +126,7 @@ export default async function StatsPage() {
             <div key={key} className="card-gradient border border-border-card p-4 flex flex-col gap-3">
               <div className="flex justify-between items-center">
                 <div className="font-mono text-system-label text-on-surface-variant uppercase tracking-wider">{key}</div>
-                <span className={`material-symbols-outlined ${color}`} style={{ fontSize: '20px', fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+                <span aria-hidden="true" className={`material-symbols-outlined ${color}`} style={{ fontSize: '20px', fontVariationSettings: "'FILL' 1" }}>{icon}</span>
               </div>
               <div className="flex items-end gap-3">
                 <div className="font-display text-headline-lg text-on-surface">{val}</div>
@@ -195,16 +195,16 @@ export default async function StatsPage() {
         <div className="flex flex-col gap-3">
           {profile.level >= 1 && (
             <div className="flex justify-between items-center">
-              <span className="font-mono text-[10px] text-outline">CURRENT</span>
-              <span className="font-mono text-[10px] text-on-surface-variant">ACHIEVED LEVEL {profile.level}</span>
-              <span className="font-mono text-[10px] text-secondary">+{profile.total_xp > 0 ? Math.floor(profile.total_xp / 100) * 100 : 0} XP</span>
+              <span className="font-mono text-xs text-outline">CURRENT</span>
+              <span className="font-mono text-xs text-on-surface-variant">ACHIEVED LEVEL {profile.level}</span>
+              <span className="font-mono text-xs text-secondary">+{profile.total_xp > 0 ? Math.floor(profile.total_xp / 100) * 100 : 0} XP</span>
             </div>
           )}
           {RANK_ROWS.filter(({ max }) => profile.level > max).slice(-3).reverse().map(({ rank, min }) => (
             <div key={rank} className="flex justify-between items-center opacity-60">
-              <span className="font-mono text-[10px] text-outline">PAST</span>
-              <span className="font-mono text-[10px] text-outline">REACHED RANK {rank}</span>
-              <span className="font-mono text-[10px] text-outline">LV {min}</span>
+              <span className="font-mono text-xs text-outline">PAST</span>
+              <span className="font-mono text-xs text-outline">REACHED RANK {rank}</span>
+              <span className="font-mono text-xs text-outline">LV {min}</span>
             </div>
           ))}
           {profile.level <= 1 && (

@@ -162,7 +162,7 @@ function SplashStep({ onEnter }: { onEnter: () => void }) {
             className="relative px-8 py-3 border border-secondary bg-secondary/5 hover:bg-secondary/10 transition-all duration-300 group overflow-hidden"
           >
             <div className="absolute inset-0 bg-secondary/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-            <span className="relative z-10 text-secondary font-mono tracking-[3px] uppercase text-[11px]">
+            <span className="relative z-10 text-secondary font-mono tracking-[3px] uppercase text-xs">
               ENTER SYSTEM
             </span>
             <div className="absolute top-0 left-0 w-1 h-1 bg-secondary" />
@@ -171,7 +171,7 @@ function SplashStep({ onEnter }: { onEnter: () => void }) {
         </div>
 
         <div className="absolute bottom-4 w-full text-center">
-          <p className="text-surface-variant font-mono text-[10px] tracking-widest uppercase">
+          <p className="text-surface-variant font-mono text-xs tracking-widest uppercase">
             v1.0 — ASCEND PROTOCOL
           </p>
         </div>
@@ -217,7 +217,7 @@ function QuestionStep({
           <h2 className="font-mono text-system-label text-secondary tracking-widest uppercase">
             SYSTEM EVALUATION — 0{currentStep}/03
           </h2>
-          <span className="material-symbols-outlined text-outline-variant" style={{ fontSize: '16px' }}>
+          <span aria-hidden="true" className="material-symbols-outlined text-outline-variant" style={{ fontSize: '16px' }}>
             settings_ethernet
           </span>
         </div>
@@ -235,7 +235,7 @@ function QuestionStep({
           {options.map((option) => {
             const isSelected = localSelected === option.value
             return (
-              <label key={option.value} className="cursor-pointer group relative">
+              <label key={option.value} className="cursor-pointer group relative has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-secondary">
                 <input
                   type="radio"
                   name="option"
@@ -252,7 +252,7 @@ function QuestionStep({
                   <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isSelected ? 'bg-[#6CCBFF]' : 'bg-primary-container'}`} />
                   <div className="flex items-start gap-3 pl-4">
                     {option.icon && (
-                      <span className={`material-symbols-outlined mt-0.5 shrink-0 ${isSelected ? 'text-[#6CCBFF]' : 'text-outline-variant'}`}
+                      <span aria-hidden="true" className={`material-symbols-outlined mt-0.5 shrink-0 ${isSelected ? 'text-[#6CCBFF]' : 'text-outline-variant'}`}
                         style={{ fontSize: '20px', fontVariationSettings: "'FILL' 1" }}>
                         {option.icon}
                       </span>
@@ -281,9 +281,10 @@ function QuestionStep({
           {currentStep > 1 && (
             <button
               onClick={onBack}
+              aria-label="Back"
               className="w-14 h-14 border border-outline-variant flex items-center justify-center text-outline hover:text-on-surface hover:border-outline transition-colors"
             >
-              <span className="material-symbols-outlined">arrow_back</span>
+              <span aria-hidden="true" className="material-symbols-outlined">arrow_back</span>
             </button>
           )}
           <button
@@ -345,7 +346,7 @@ function ArchetypeReveal({ archetype, onContinue }: { archetype: Archetype; onCo
             <div className="absolute inset-0 rounded-full border border-primary-container shadow-[0_0_4px_#4B2DBD] opacity-50 animate-pulse" />
             <div className="absolute inset-4 rotate-45 border border-primary-fixed-dim shadow-[0_0_4px_#4B2DBD] opacity-30" />
             <div className="absolute inset-8 -rotate-12 border border-secondary shadow-[0_0_4px_#4B2DBD] opacity-20" />
-            <span className="material-symbols-outlined text-primary-fixed-dim text-glow" style={{ fontSize: '80px', fontVariationSettings: "'FILL' 1" }}>
+            <span aria-hidden="true" className="material-symbols-outlined text-primary-fixed-dim text-glow" style={{ fontSize: '80px', fontVariationSettings: "'FILL' 1" }}>
               shield_lock
             </span>
           </div>
@@ -375,7 +376,7 @@ function ArchetypeReveal({ archetype, onContinue }: { archetype: Archetype; onCo
             className="w-full bg-primary-container border border-[#6B3FD4] py-4 px-6 flex items-center justify-center gap-2 font-mono text-system-label text-on-primary-container tracking-[0.3em] uppercase hover:shadow-[0_0_10px_#6CCBFF] transition-all duration-300"
           >
             ACCEPT CLASSIFICATION
-            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>arrow_forward</span>
+            <span aria-hidden="true" className="material-symbols-outlined" style={{ fontSize: '16px' }}>arrow_forward</span>
           </button>
         </div>
       </main>
@@ -404,7 +405,7 @@ function CommitmentStep({
               value={hunterName}
               onChange={(e) => onHunterNameChange(e.target.value)}
               maxLength={20}
-              className="w-full bg-surface-container border border-outline-variant px-4 py-3 font-body text-on-surface placeholder-outline focus:outline-none focus:border-secondary transition-colors"
+              className="w-full bg-surface-container border border-outline-variant px-4 py-3 font-body text-on-surface placeholder-outline focus:border-secondary transition-colors"
               placeholder="Your hunter name..."
             />
           </div>
@@ -415,7 +416,7 @@ function CommitmentStep({
               value={commitmentText}
               onChange={(e) => onCommitmentChange(e.target.value)}
               rows={4}
-              className="w-full bg-surface-container border border-outline-variant px-4 py-3 font-body text-on-surface placeholder-outline focus:outline-none focus:border-secondary transition-colors resize-none leading-relaxed"
+              className="w-full bg-surface-container border border-outline-variant px-4 py-3 font-body text-on-surface placeholder-outline focus:border-secondary transition-colors resize-none leading-relaxed"
               placeholder="Write your oath. Be specific. Be honest. The system records everything."
             />
           </div>

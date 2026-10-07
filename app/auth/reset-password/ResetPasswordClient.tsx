@@ -117,10 +117,11 @@ export default function ResetPasswordClient({ code }: Props) {
           {ready && (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs text-text-secondary tracking-widest mb-1.5">
+                <label htmlFor="password" className="block text-xs text-text-secondary tracking-widest mb-1.5">
                   NEW PASSWORD
                 </label>
                 <input
+                  id="password"
                   name="password"
                   type="password"
                   required
@@ -128,23 +129,24 @@ export default function ResetPasswordClient({ code }: Props) {
                   autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-bg-secondary border border-border rounded-sm px-3 py-2.5 text-sm text-text-primary placeholder-text-secondary/40 focus:outline-none focus:border-aura-primary transition-colors"
+                  className="w-full bg-bg-secondary border border-border rounded-sm px-3 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:border-aura-primary transition-colors"
                   placeholder="min. 6 characters"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-text-secondary tracking-widest mb-1.5">
+                <label htmlFor="confirm" className="block text-xs text-text-secondary tracking-widest mb-1.5">
                   CONFIRM PASSWORD
                 </label>
                 <input
+                  id="confirm"
                   name="confirm"
                   type="password"
                   required
                   autoComplete="new-password"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
-                  className="w-full bg-bg-secondary border border-border rounded-sm px-3 py-2.5 text-sm text-text-primary placeholder-text-secondary/40 focus:outline-none focus:border-aura-primary transition-colors"
+                  className="w-full bg-bg-secondary border border-border rounded-sm px-3 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:border-aura-primary transition-colors"
                   placeholder="confirm new key"
                 />
               </div>
@@ -161,7 +163,7 @@ export default function ResetPasswordClient({ code }: Props) {
           )}
 
           {error && (
-            <p className="text-xs text-red-400 tracking-wide border border-red-400/20 bg-red-400/5 px-3 py-2 rounded-sm">
+            <p role="alert" className="text-xs text-red-400 tracking-wide border border-red-400/20 bg-red-400/5 px-3 py-2 rounded-sm">
               {error}
             </p>
           )}

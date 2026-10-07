@@ -99,12 +99,12 @@ export default function SelectionPhase({ cycleNumber, questPoolsByCategory, prev
         >
           {currentCat.label}
         </h1>
-        <p className="text-xs text-text-secondary/60 mt-0.5">
+        <p className="text-xs text-text-secondary mt-0.5">
           {currentCat.description} · Pick {currentCat.required}
         </p>
 
         {/* Progress bar */}
-        <div className="flex gap-1.5 mt-4">
+        <div className="flex gap-1.5 mt-4" role="img" aria-label={`Category ${categoryIndex + 1} of ${CATEGORY_CONFIG.length}`}>
           {CATEGORY_CONFIG.map((c, i) => {
             const done = (selections[c.key]?.length ?? 0) === c.required
             const active = i === categoryIndex
@@ -142,6 +142,7 @@ export default function SelectionPhase({ cycleNumber, questPoolsByCategory, prev
                 key={pool.id}
                 onClick={() => toggleSelection(pool.id)}
                 disabled={maxReached}
+                aria-pressed={selected}
                 className={`w-full text-left p-4 border rounded-sm transition-all ${
                   maxReached ? 'border-border opacity-30 cursor-not-allowed' : 'border-border bg-card'
                 }`}
@@ -163,7 +164,7 @@ export default function SelectionPhase({ cycleNumber, questPoolsByCategory, prev
                       )}
                     </div>
                     {pool.description && (
-                      <p className="text-xs text-text-secondary/60 leading-relaxed">{pool.description}</p>
+                      <p className="text-xs text-text-secondary leading-relaxed">{pool.description}</p>
                     )}
                   </div>
                   <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
@@ -176,7 +177,7 @@ export default function SelectionPhase({ cycleNumber, questPoolsByCategory, prev
                     >
                       {DIFFICULTY_LABEL[pool.difficulty]}
                     </span>
-                    <span className="text-xs text-text-secondary/50">+{pool.xp_reward}</span>
+                    <span className="text-xs text-text-secondary">+{pool.xp_reward}</span>
                   </div>
                 </div>
               </button>
@@ -197,7 +198,7 @@ export default function SelectionPhase({ cycleNumber, questPoolsByCategory, prev
             <button
               onClick={() => setCategoryIndex((i) => i - 1)}
               disabled={submitting}
-              className="px-5 py-3 border border-border text-text-secondary hover:text-text-primary hover:border-text-secondary/40 rounded-sm text-xs tracking-widest transition-colors disabled:opacity-30"
+              className="px-5 py-3 border border-border text-text-secondary hover:text-text-primary hover:border-text-secondary rounded-sm text-xs tracking-widest transition-colors disabled:opacity-30"
             >
               BACK
             </button>

@@ -5,7 +5,7 @@ export default function OfflinePage() {
     <div className="min-h-screen bg-[#14121a] flex items-center justify-center px-4">
       <div className="text-center space-y-6 max-w-sm">
         <div className="w-20 h-20 mx-auto bg-primary-container/10 border border-primary-container/30 flex items-center justify-center">
-          <span className="material-symbols-outlined text-[40px] text-primary-container">
+          <span aria-hidden="true" className="material-symbols-outlined text-[40px] text-primary-container">
             wifi_off
           </span>
         </div>
@@ -27,7 +27,7 @@ export default function OfflinePage() {
           RETRY CONNECTION
         </button>
 
-        <p className="font-mono text-[10px] text-outline">
+        <p className="font-mono text-xs text-outline">
           Previously loaded data may still be available below.
         </p>
       </div>

@@ -127,7 +127,7 @@ function MetricCard({
       <p className="text-3xl font-bold" style={{ fontFamily: 'var(--font-rajdhani)', color }}>
         {value}
       </p>
-      <p className="text-xs text-text-secondary/40 mt-1">{sub}</p>
+      <p className="text-xs text-text-secondary mt-1">{sub}</p>
     </div>
   )
 }

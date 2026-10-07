@@ -133,14 +133,14 @@ export default function UserCard({
 
       {/* Penalty banner */}
       {user.penalty_tier > 0 && (
-        <div className={`px-4 py-2 font-mono text-[10px] uppercase tracking-widest flex items-center gap-2 ${
+        <div className={`px-4 py-2 font-mono text-xs uppercase tracking-widest flex items-center gap-2 ${
           user.penalty_tier === 3
             ? 'bg-error/15 text-error border-b border-error/30'
             : user.penalty_tier === 2
               ? 'bg-error/10 text-error/80 border-b border-error/20'
-              : 'bg-error/5 text-error/60 border-b border-error/10'
+              : 'bg-error/5 text-error border-b border-error/10'
         }`}>
-          <span className="material-symbols-outlined text-[14px]">warning</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-[14px]">warning</span>
           PENALTY TIER {user.penalty_tier}
           {user.penalty_zone_active && ' — PENALTY ZONE ACTIVE'}
           {(user.consecutive_failures ?? 0) > 0 &&
@@ -159,22 +159,22 @@ export default function UserCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
             <span className="font-display text-headline-md text-on-surface">{user.hunter_name}</span>
-            <span className="font-mono text-[10px] text-primary border border-primary/30 px-2 py-0.5">
+            <span className="font-mono text-xs text-primary border border-primary/30 px-2 py-0.5">
               {user.rank} RANK
             </span>
-            <span className="font-mono text-[10px] text-secondary">LVL {user.level}</span>
+            <span className="font-mono text-xs text-secondary">LVL {user.level}</span>
             {user.streak_shield_active && (
-              <span className="font-mono text-[10px] text-[#6CCBFF] border border-[#6CCBFF]/30 px-2 py-0.5">
+              <span className="font-mono text-xs text-[#6CCBFF] border border-[#6CCBFF]/30 px-2 py-0.5">
                 SHIELD READY
               </span>
             )}
           </div>
           <div className="flex items-center gap-4 mt-1 flex-wrap">
-            <span className="font-mono text-[10px] text-secondary">{user.archetype}</span>
-            <span className="font-mono text-[10px] text-outline">DAY {daysSinceJoined}</span>
-            <span className="font-mono text-[10px] text-outline">STREAK {user.current_streak}d</span>
-            <span className="font-mono text-[10px] text-outline">BEST {user.best_streak}d</span>
-            <span className="font-mono text-[10px] text-[#6CCBFF]">
+            <span className="font-mono text-xs text-secondary">{user.archetype}</span>
+            <span className="font-mono text-xs text-outline">DAY {daysSinceJoined}</span>
+            <span className="font-mono text-xs text-outline">STREAK {user.current_streak}d</span>
+            <span className="font-mono text-xs text-outline">BEST {user.best_streak}d</span>
+            <span className="font-mono text-xs text-[#6CCBFF]">
               {user.total_xp?.toLocaleString()} TOTAL XP
             </span>
           </div>
@@ -202,7 +202,7 @@ export default function UserCard({
               {completedToday}/{totalToday}
             </text>
           </svg>
-          <span className="font-mono text-[9px] text-outline">TODAY</span>
+          <span className="font-mono text-xs text-outline">TODAY</span>
         </div>
       </div>
 
@@ -212,7 +212,7 @@ export default function UserCard({
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors ${
+            className={`flex-1 py-2 font-mono text-xs uppercase tracking-widest transition-colors ${
               activeTab === tab.id
                 ? 'text-secondary border-b-2 border-secondary bg-secondary/5'
                 : 'text-outline hover:text-on-surface-variant'
@@ -248,14 +248,14 @@ export default function UserCard({
               },
             ].map((item) => (
               <div key={item.label} className="bg-surface-container-low border border-outline-variant p-3">
-                <div className="font-mono text-[9px] text-outline mb-1 uppercase">{item.label}</div>
+                <div className="font-mono text-xs text-outline mb-1 uppercase">{item.label}</div>
                 <div className={`font-display text-stat-value ${item.color}`}>{item.value}</div>
               </div>
             ))}
 
             {/* XP progress */}
             <div className="col-span-4 bg-surface-container-low border border-outline-variant p-3">
-              <div className="flex justify-between font-mono text-[9px] mb-2">
+              <div className="flex justify-between font-mono text-xs mb-2">
                 <span className="text-outline">XP TO NEXT LEVEL</span>
                 <span className="text-secondary">{user.current_xp} / {user.xp_to_next_level}</span>
               </div>
@@ -276,15 +276,15 @@ export default function UserCard({
             {cycle && (
               <div className="col-span-4 bg-surface-container-low border border-outline-variant p-3 flex gap-6">
                 <div>
-                  <div className="font-mono text-[9px] text-outline mb-1">CYCLE</div>
+                  <div className="font-mono text-xs text-outline mb-1">CYCLE</div>
                   <div className="font-display text-stat-value text-primary">#{cycle.cycle_number}</div>
                 </div>
                 <div>
-                  <div className="font-mono text-[9px] text-outline mb-1">STARTED</div>
+                  <div className="font-mono text-xs text-outline mb-1">STARTED</div>
                   <div className="font-mono text-system-label text-on-surface">{cycle.started_date}</div>
                 </div>
                 <div>
-                  <div className="font-mono text-[9px] text-outline mb-1">COMPLETIONS</div>
+                  <div className="font-mono text-xs text-outline mb-1">COMPLETIONS</div>
                   <div className="font-display text-stat-value text-tertiary">{cycle.total_completions}</div>
                 </div>
               </div>
@@ -300,10 +300,10 @@ export default function UserCard({
                 <span className="font-mono text-system-label text-secondary">
                   {completedToday}/{totalToday} QUESTS COMPLETE
                 </span>
-                <div className="font-mono text-[10px] text-[#6CCBFF] mt-1">+{xpToday} XP EARNED TODAY</div>
+                <div className="font-mono text-xs text-[#6CCBFF] mt-1">+{xpToday} XP EARNED TODAY</div>
               </div>
               {completedToday === 0 && (
-                <span className="font-mono text-[10px] text-error border border-error/30 px-2 py-1">
+                <span className="font-mono text-xs text-error border border-error/30 px-2 py-1">
                   NO ACTIVITY
                 </span>
               )}
@@ -327,18 +327,18 @@ export default function UserCard({
                     }`}
                   >
                     {quest.is_completed && (
-                      <span className="material-symbols-outlined text-secondary text-[12px]">check</span>
+                      <span aria-hidden="true" className="material-symbols-outlined text-secondary text-[12px]">check</span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className={`font-mono text-[11px] truncate ${
+                    <div className={`font-mono text-xs truncate ${
                       quest.is_completed ? 'text-on-surface-variant line-through' : 'text-on-surface'
                     }`}>
                       {quest.title}
                     </div>
-                    <div className="font-mono text-[9px] text-outline mt-0.5 uppercase">{quest.category}</div>
+                    <div className="font-mono text-xs text-outline mt-0.5 uppercase">{quest.category}</div>
                   </div>
-                  <div className={`font-mono text-[11px] flex-shrink-0 ${
+                  <div className={`font-mono text-xs flex-shrink-0 ${
                     quest.is_completed ? 'text-[#6CCBFF]' : 'text-outline'
                   }`}>
                     {quest.is_completed ? `+${quest.xp_reward} XP` : `${quest.xp_reward} XP`}
@@ -358,7 +358,7 @@ export default function UserCard({
                 return (
                   <div key={stat.key} className="bg-surface-container-low border border-outline-variant p-3">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="font-mono text-[9px] text-outline uppercase">{stat.key}</span>
+                      <span className="font-mono text-xs text-outline uppercase">{stat.key}</span>
                       <span className="font-display text-stat-value text-on-surface">{val}</span>
                     </div>
                     <div className="h-1 bg-surface-container-high">
@@ -389,7 +389,7 @@ export default function UserCard({
               ].map((item) => (
                 <div key={item.label} className="flex items-center gap-1.5">
                   <div className={`w-3 h-3 ${item.cls}`} />
-                  <span className="font-mono text-[9px] text-outline">{item.label}</span>
+                  <span className="font-mono text-xs text-outline">{item.label}</span>
                 </div>
               ))}
             </div>
@@ -407,7 +407,7 @@ export default function UserCard({
                     : 'bg-surface-variant/20 border border-outline-variant/20'
                   }`}
                 >
-                  <span className="font-mono text-[8px] text-on-surface-variant">{day.day}</span>
+                  <span className="font-mono text-xs text-on-surface-variant">{day.day}</span>
                   {day.penalty && (
                     <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-error" />
                   )}
@@ -428,21 +428,21 @@ export default function UserCard({
                     key={i}
                     className="flex items-center gap-3 py-2 border-b border-outline-variant/20"
                   >
-                    <span className="font-mono text-[10px] text-outline w-20 flex-shrink-0">{day.date}</span>
+                    <span className="font-mono text-xs text-outline w-20 flex-shrink-0">{day.date}</span>
                     <div className={`w-2 h-2 flex-shrink-0 ${
                       day.status === 'success' ? 'bg-secondary'
                       : day.status === 'weak'  ? 'bg-tertiary/70'
                       : day.status === 'failed'? 'bg-error'
                       : 'bg-surface-variant'
                     }`} />
-                    <span className="font-mono text-[10px] text-on-surface flex-1">
+                    <span className="font-mono text-xs text-on-surface flex-1">
                       {day.completed}/{day.total} quests
                     </span>
-                    <span className="font-mono text-[10px] text-[#6CCBFF] w-20 text-right">
+                    <span className="font-mono text-xs text-[#6CCBFF] w-20 text-right">
                       +{day.xpEarned} XP
                     </span>
                     {day.penalty && (
-                      <span className="font-mono text-[10px] text-error w-24 text-right">
+                      <span className="font-mono text-xs text-error w-24 text-right">
                         T{day.penalty.penalty_tier} PENALTY
                       </span>
                     )}
@@ -460,19 +460,19 @@ export default function UserCard({
             {/* Current status */}
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-surface-container-low border border-outline-variant p-3">
-                <div className="font-mono text-[9px] text-outline mb-1">CURRENT TIER</div>
+                <div className="font-mono text-xs text-outline mb-1">CURRENT TIER</div>
                 <div className={`font-display text-stat-value ${user.penalty_tier > 0 ? 'text-error' : 'text-secondary'}`}>
                   TIER {user.penalty_tier}
                 </div>
               </div>
               <div className="bg-surface-container-low border border-outline-variant p-3">
-                <div className="font-mono text-[9px] text-outline mb-1">CONSEC. FAILURES</div>
+                <div className="font-mono text-xs text-outline mb-1">CONSEC. FAILURES</div>
                 <div className={`font-display text-stat-value ${(user.consecutive_failures ?? 0) > 0 ? 'text-error' : 'text-secondary'}`}>
                   {user.consecutive_failures ?? 0}
                 </div>
               </div>
               <div className="bg-surface-container-low border border-outline-variant p-3">
-                <div className="font-mono text-[9px] text-outline mb-1">PENALTY ZONE</div>
+                <div className="font-mono text-xs text-outline mb-1">PENALTY ZONE</div>
                 <div className={`font-display text-stat-value ${user.penalty_zone_active ? 'text-error' : 'text-secondary'}`}>
                   {user.penalty_zone_active ? 'ACTIVE' : 'INACTIVE'}
                 </div>
@@ -492,22 +492,22 @@ export default function UserCard({
                     {/* Header */}
                     <div className="flex justify-between items-center flex-wrap gap-2">
                       <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined text-error text-[16px]">warning</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-error text-[16px]">warning</span>
                         <span className="font-mono text-system-label text-error">{p.date}</span>
-                        <span className="font-mono text-[10px] text-error border border-error/30 px-2 py-0.5">
+                        <span className="font-mono text-xs text-error border border-error/30 px-2 py-0.5">
                           TIER {p.penalty_tier}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         {(p.xp_lost ?? 0) > 0 && (
-                          <span className="font-mono text-[10px] text-error">
+                          <span className="font-mono text-xs text-error">
                             -{p.xp_lost} XP LOST
                           </span>
                         )}
                         {p.level_before != null &&
                           p.level_after  != null &&
                           p.level_before !== p.level_after && (
-                          <span className="font-mono text-[10px] text-error border border-error/30 px-2 py-0.5">
+                          <span className="font-mono text-xs text-error border border-error/30 px-2 py-0.5">
                             LEVEL {p.level_before} → {p.level_after}
                           </span>
                         )}
@@ -519,13 +519,13 @@ export default function UserCard({
                       {/* Stats reduced */}
                       {p.stats_reduced && Object.keys(p.stats_reduced).length > 0 && (
                         <div className="space-y-1">
-                          <div className="font-mono text-[9px] text-on-surface-variant uppercase">
+                          <div className="font-mono text-xs text-on-surface-variant uppercase">
                             Stats Reduced
                           </div>
                           {Object.entries(p.stats_reduced).map(([stat, val]) => (
                             <div key={stat} className="flex justify-between">
-                              <span className="font-mono text-[9px] text-outline uppercase">{stat}</span>
-                              <span className="font-mono text-[9px] text-error">-{val}</span>
+                              <span className="font-mono text-xs text-outline uppercase">{stat}</span>
+                              <span className="font-mono text-xs text-error">-{val}</span>
                             </div>
                           ))}
                         </div>
@@ -534,7 +534,7 @@ export default function UserCard({
                       {/* Quest + zone status */}
                       <div className="space-y-2">
                         <div>
-                          <div className="font-mono text-[9px] text-on-surface-variant uppercase mb-1">
+                          <div className="font-mono text-xs text-on-surface-variant uppercase mb-1">
                             Penalty Quest
                           </div>
                           <div className="flex items-center gap-2">
@@ -545,7 +545,7 @@ export default function UserCard({
                                   ? 'border-error/50'
                                   : 'border-outline-variant'
                             }`} />
-                            <span className="font-mono text-[9px] text-outline">
+                            <span className="font-mono text-xs text-outline">
                               {p.penalty_quest_completed
                                 ? 'COMPLETED'
                                 : p.penalty_quest_assigned
@@ -557,10 +557,10 @@ export default function UserCard({
 
                         {p.penalty_zone_triggered && (
                           <div>
-                            <div className="font-mono text-[9px] text-on-surface-variant uppercase mb-1">
+                            <div className="font-mono text-xs text-on-surface-variant uppercase mb-1">
                               Penalty Zone
                             </div>
-                            <div className={`font-mono text-[9px] ${
+                            <div className={`font-mono text-xs ${
                               p.penalty_zone_completed ? 'text-secondary'
                               : p.penalty_zone_failed  ? 'text-error'
                               : 'text-tertiary'

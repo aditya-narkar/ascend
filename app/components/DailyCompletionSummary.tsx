@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect } from 'react'
+
 interface Props {
   isOpen: boolean
   dayNumber: number
@@ -19,6 +21,13 @@ export default function DailyCompletionSummary({
   isOpen, dayNumber, xpEarned, statsGained,
   completedCount, totalQuests, kaizenThreshold, currentStreak, onDismiss,
 }: Props) {
+  useEffect(() => {
+    if (!isOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onDismiss() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isOpen, onDismiss])
+
   if (!isOpen) return null
 
   const allComplete = completedCount >= totalQuests
@@ -30,7 +39,7 @@ export default function DailyCompletionSummary({
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-end justify-center p-4 pb-24"
+      role="dialog" aria-modal="true" aria-label="Daily report" className="fixed inset-0 z-40 flex items-end justify-center p-4 pb-24"
       style={{ background: 'rgba(2,3,5,0.88)' }}
       onClick={onDismiss}
     >
@@ -40,13 +49,13 @@ export default function DailyCompletionSummary({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Label */}
-        <p style={{ ...MONO, fontSize: '10px', letterSpacing: '3px', color: '#4B2DBD' }} className="mb-5">
+        <p style={{ ...MONO, fontSize: '12px', letterSpacing: '3px', color: '#4B2DBD' }} className="mb-5">
           DAY {dayNumber} COMPLETE
         </p>
 
         {/* XP earned */}
         <div className="mb-5">
-          <p style={{ ...MONO, fontSize: '10px', color: '#8D96B8', marginBottom: 4 }}>
+          <p style={{ ...MONO, fontSize: '12px', color: '#8D96B8', marginBottom: 4 }}>
             XP EARNED
           </p>
           <p style={{ ...RAJD, fontSize: '40px', fontWeight: 700, color: '#6CCBFF', lineHeight: 1 }}>
@@ -57,7 +66,7 @@ export default function DailyCompletionSummary({
         {/* Stats gained */}
         {statsGained.length > 0 && (
           <div className="mb-5">
-            <p style={{ ...MONO, fontSize: '10px', color: '#8D96B8', marginBottom: 8 }}>
+            <p style={{ ...MONO, fontSize: '12px', color: '#8D96B8', marginBottom: 8 }}>
               STATS GAINED TODAY
             </p>
             <div className="space-y-1">
@@ -89,7 +98,7 @@ export default function DailyCompletionSummary({
           style={{ background: 'rgba(75,45,189,0.06)', border: '1px solid rgba(75,45,189,0.15)' }}
         >
           {systemMsg.split('\n').map((line, i) => (
-            <p key={i} style={{ ...MONO, fontSize: '11px', color: '#8D96B8', lineHeight: 1.6 }}>
+            <p key={i} style={{ ...MONO, fontSize: '12px', color: '#8D96B8', lineHeight: 1.6 }}>
               {line}
             </p>
           ))}
@@ -97,6 +106,7 @@ export default function DailyCompletionSummary({
 
         {/* Dismiss */}
         <button
+          autoFocus
           onClick={onDismiss}
           className="w-full rounded-sm py-3 tracking-[0.2em] transition-opacity hover:opacity-75"
           style={{ ...MONO, color: '#8D96B8', border: '1px solid rgba(75,45,189,0.3)', background: 'transparent', fontSize: '12px' }}

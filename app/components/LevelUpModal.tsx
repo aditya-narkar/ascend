@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect } from 'react'
+
 interface StatsGained {
   stat: string
   value: number
@@ -26,16 +28,23 @@ export default function LevelUpModal({
   isOpen, oldLevel, newLevel, oldRank, newRank,
   rankChanged, eliteUnlocked, statsGained, onDismiss,
 }: Props) {
+  useEffect(() => {
+    if (!isOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onDismiss() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isOpen, onDismiss])
+
   if (!isOpen) return null
 
   // ── STATE 3: Elite unlock ─────────────────────────────────────
   if (eliteUnlocked) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-6 flicker-in" style={OVERLAY}>
+      <div role="dialog" aria-modal="true" aria-label="Level up" className="fixed inset-0 z-50 flex items-center justify-center p-6 flicker-in" style={OVERLAY}>
         <div className="max-w-sm w-full rounded-sm p-8 text-center" style={CARD}>
           <p
             className="mb-2 tracking-[0.4em]"
-            style={{ ...MONO, fontSize: '10px', color: '#6CCBFF', letterSpacing: '4px' }}
+            style={{ ...MONO, fontSize: '12px', color: '#6CCBFF', letterSpacing: '4px' }}
           >
             E-RANK ACHIEVED
           </p>
@@ -67,6 +76,7 @@ export default function LevelUpModal({
           )}
 
           <button
+            autoFocus
             onClick={onDismiss}
             className="w-full rounded-sm py-3 tracking-[0.2em] transition-opacity hover:opacity-75"
             style={{ ...MONO, color: '#ffc432', border: '1px solid #ffc432', background: 'transparent', fontSize: '13px' }}
@@ -81,9 +91,9 @@ export default function LevelUpModal({
   // ── STATE 2: Rank increased ───────────────────────────────────
   if (rankChanged) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-6 flicker-in" style={OVERLAY}>
+      <div role="dialog" aria-modal="true" aria-label="Level up" className="fixed inset-0 z-50 flex items-center justify-center p-6 flicker-in" style={OVERLAY}>
         <div className="max-w-sm w-full rounded-sm p-8 text-center" style={CARD}>
-          <p style={{ ...MONO, color: '#4B2DBD', fontSize: '10px', letterSpacing: '4px' }} className="mb-6">
+          <p style={{ ...MONO, color: '#4B2DBD', fontSize: '12px', letterSpacing: '4px' }} className="mb-6">
             LEVEL UP
           </p>
 
@@ -112,7 +122,7 @@ export default function LevelUpModal({
               RANK {newRank}
             </span>
           </div>
-          <p className="mb-8" style={{ ...MONO, color: '#8D96B8', fontSize: '10px', letterSpacing: '3px' }}>
+          <p className="mb-8" style={{ ...MONO, color: '#8D96B8', fontSize: '12px', letterSpacing: '3px' }}>
             RANK INCREASED
           </p>
 
@@ -127,6 +137,7 @@ export default function LevelUpModal({
           )}
 
           <button
+            autoFocus
             onClick={onDismiss}
             className="rounded-sm tracking-widest transition-opacity hover:opacity-70"
             style={{
@@ -143,9 +154,9 @@ export default function LevelUpModal({
 
   // ── STATE 1: Regular level up ─────────────────────────────────
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 flicker-in" style={OVERLAY}>
+    <div role="dialog" aria-modal="true" aria-label="Level up" className="fixed inset-0 z-50 flex items-center justify-center p-6 flicker-in" style={OVERLAY}>
       <div className="max-w-sm w-full rounded-sm p-8 text-center" style={CARD}>
-        <p style={{ ...MONO, color: '#4B2DBD', fontSize: '10px', letterSpacing: '4px' }} className="mb-6">
+        <p style={{ ...MONO, color: '#4B2DBD', fontSize: '12px', letterSpacing: '4px' }} className="mb-6">
           LEVEL UP
         </p>
 
@@ -168,6 +179,7 @@ export default function LevelUpModal({
         )}
 
         <button
+          autoFocus
           onClick={onDismiss}
           className="rounded-sm tracking-widest transition-opacity hover:opacity-70"
           style={{

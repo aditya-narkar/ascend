@@ -155,7 +155,7 @@ export default function PenaltyZone({ startedAt, initialActiveTime }: Props) {
       {/* Top HUD bar */}
       <div className="absolute top-10 left-4 right-4 flex justify-between items-start border-t border-error/50 pt-2 font-mono text-system-label text-error uppercase z-10 opacity-70">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined" style={{ fontSize: '14px', fontVariationSettings: "'FILL' 1" }}>warning</span>
+          <span aria-hidden="true" className="material-symbols-outlined" style={{ fontSize: '14px', fontVariationSettings: "'FILL' 1" }}>warning</span>
           SEC-LEVEL: MAXIMUM
         </div>
         <span>ID: 884-X9-PRTCL</span>
@@ -216,7 +216,7 @@ export default function PenaltyZone({ startedAt, initialActiveTime }: Props) {
 
             <div className="flex flex-col items-center space-y-3 font-mono text-system-label uppercase text-center">
               <span className="text-on-surface flex items-center gap-2">
-                <span className="material-symbols-outlined text-error" style={{ fontSize: '18px' }}>timer</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-error" style={{ fontSize: '18px' }}>timer</span>
                 Stay active for 2 continuous hours.
               </span>
               <span className="text-error font-bold tracking-widest bg-error/10 px-3 py-1 w-full border border-error/20">

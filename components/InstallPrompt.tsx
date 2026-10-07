@@ -85,11 +85,11 @@ export default function InstallPrompt() {
           <div className="flex-1">
             <div className="font-mono text-system-label text-secondary mb-1">INSTALL ASCEND</div>
             {isIOS ? (
-              <p className="font-mono text-[10px] text-on-surface-variant leading-relaxed">
+              <p className="font-mono text-xs text-on-surface-variant leading-relaxed">
                 Tap the share button then &quot;Add to Home Screen&quot; to install the system on your device.
               </p>
             ) : (
-              <p className="font-mono text-[10px] text-on-surface-variant leading-relaxed">
+              <p className="font-mono text-xs text-on-surface-variant leading-relaxed">
                 Install ASCEND on your device for the full system experience. Works offline.
               </p>
             )}
@@ -100,14 +100,14 @@ export default function InstallPrompt() {
           {!isIOS && (
             <button
               onClick={handleInstall}
-              className="flex-1 h-10 bg-primary-container border border-[#6B3FD4] font-mono text-system-label text-on-primary-container uppercase tracking-widest hover:shadow-[0_0_10px_#6CCBFF] transition-all text-[10px]"
+              className="flex-1 h-10 bg-primary-container border border-[#6B3FD4] font-mono text-system-label text-on-primary-container uppercase tracking-widest hover:shadow-[0_0_10px_#6CCBFF] transition-all text-xs"
             >
               INSTALL NOW
             </button>
           )}
           <button
             onClick={handleDismiss}
-            className="px-4 h-10 border border-outline-variant font-mono text-system-label text-outline uppercase tracking-widest text-[10px] hover:border-outline transition-colors"
+            className="px-4 h-10 border border-outline-variant font-mono text-system-label text-outline uppercase tracking-widest text-xs hover:border-outline transition-colors"
           >
             LATER
           </button>

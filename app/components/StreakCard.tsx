@@ -21,186 +21,52 @@ export default function StreakCard({
   const shieldState = getShieldState(user)
   const daysUntilShield = getDaysUntilShield(user)
 
+  const shield = {
+    active: { icon: 'shield', label: 'SHIELD READY', tone: 'text-secondary border-secondary/50 bg-secondary/10' },
+    used: { icon: 'shield', label: 'SHIELD USED', tone: 'text-outline border-outline-variant' },
+    not_earned: {
+      icon: 'lock',
+      label: `SHIELD IN ${daysUntilShield} ${daysUntilShield === 1 ? 'DAY' : 'DAYS'}`,
+      tone: 'text-outline border-outline-variant',
+    },
+  }[shieldState]
+
   return (
-    <div
-      style={{
-        background: '#0B1120',
-        border: '1px solid rgba(75,45,189,0.2)',
-        borderRadius: '12px',
-        padding: '14px',
-      }}
-    >
+    <section aria-label="Streak" className="card-gradient border border-outline-variant p-4">
       {shieldMessage && (
-        <div
-          style={{
-            background: 'rgba(108,203,255,0.06)',
-            border: '1px solid rgba(108,203,255,0.2)',
-            borderLeft: '2px solid #6CCBFF',
-            borderRadius: '0 6px 6px 0',
-            padding: '8px 12px',
-            marginBottom: '10px',
-          }}
+        <p
+          role="status"
+          className="mb-3 border-l-2 border-secondary bg-secondary/10 px-3 py-2 font-mono text-xs tracking-wider text-secondary"
         >
-          <p
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: '9px',
-              letterSpacing: '1.5px',
-              color: '#6CCBFF',
-              margin: 0,
-            }}
-          >
-            {shieldMessage}
-          </p>
-        </div>
+          {shieldMessage}
+        </p>
       )}
 
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          marginBottom: '8px',
-        }}
-      >
-        <p
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: '8px',
-            letterSpacing: '2px',
-            color: '#8D96B8',
-            margin: 0,
-          }}
-        >
-          CURRENT STREAK
-        </p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-          <div
-            style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border:
-                shieldState === 'active'
-                  ? '1px solid rgba(108,203,255,0.4)'
-                  : shieldState === 'used'
-                    ? '1px solid rgba(74,82,128,0.3)'
-                    : '1px solid rgba(42,48,96,0.3)',
-              background:
-                shieldState === 'active'
-                  ? 'rgba(108,203,255,0.1)'
-                  : shieldState === 'used'
-                    ? 'rgba(74,82,128,0.06)'
-                    : 'transparent',
-              fontSize: '14px',
-            }}
-          >
-            {shieldState === 'active' ? '🛡' : shieldState === 'used' ? '🪬' : '🔒'}
-          </div>
-          <p
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: '7px',
-              color:
-                shieldState === 'active'
-                  ? '#6CCBFF'
-                  : shieldState === 'used'
-                    ? '#4A5280'
-                    : '#2A3060',
-              margin: 0,
-              letterSpacing: '0.5px',
-            }}
-          >
-            {shieldState === 'active'
-              ? 'SHIELD READY'
-              : shieldState === 'used'
-                ? 'SHIELD USED'
-                : `DAY ${daysUntilShield}`}
-          </p>
-        </div>
-      </div>
-
-      <div
-        style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '10px' }}
-      >
-        <span
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: '40px',
-            fontWeight: 700,
-            color: '#FF9F50',
-            lineHeight: 1,
-          }}
-        >
-          {currentStreak}
-        </span>
-        <span
-          style={{ fontFamily: "var(--font-mono)", fontSize: '9px', color: '#8D96B8' }}
-        >
-          DAYS
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="font-mono text-system-label text-on-surface-variant">CURRENT STREAK</h3>
+        <span className={`flex items-center gap-1.5 border px-2 py-1 font-mono text-xs ${shield.tone}`}>
+          <span aria-hidden="true" className="material-symbols-outlined" style={{ fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>
+            {shield.icon}
+          </span>
+          {shield.label}
         </span>
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '8px',
-          borderTop: '1px solid rgba(75,45,189,0.1)',
-          paddingTop: '10px',
-        }}
-      >
+      <p className="mt-2 flex items-baseline gap-2">
+        <span className="font-display text-[40px] font-bold leading-none text-tertiary">{currentStreak}</span>
+        <span className="font-mono text-xs text-on-surface-variant">{currentStreak === 1 ? 'DAY' : 'DAYS'}</span>
+      </p>
+
+      <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-outline-variant/40 pt-3">
         <div>
-          <p
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: '8px',
-              color: '#8D96B8',
-              margin: '0 0 2px',
-            }}
-          >
-            BEST
-          </p>
-          <p
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: '18px',
-              fontWeight: 700,
-              color: '#E7ECFF',
-              margin: 0,
-            }}
-          >
-            {bestStreak}
-          </p>
+          <dt className="font-mono text-xs text-on-surface-variant">BEST</dt>
+          <dd className="font-display text-lg font-bold text-on-surface">{bestStreak}</dd>
         </div>
         <div>
-          <p
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: '8px',
-              color: '#8D96B8',
-              margin: '0 0 2px',
-            }}
-          >
-            THIS CYCLE
-          </p>
-          <p
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: '18px',
-              fontWeight: 700,
-              color: '#E7ECFF',
-              margin: 0,
-            }}
-          >
-            {cycleDaysCompleted}
-          </p>
+          <dt className="font-mono text-xs text-on-surface-variant">THIS CYCLE</dt>
+          <dd className="font-display text-lg font-bold text-on-surface">{cycleDaysCompleted}</dd>
         </div>
-      </div>
-    </div>
+      </dl>
+    </section>
   )
 }

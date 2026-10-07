@@ -104,10 +104,6 @@ export function getArchetypeDescription(archetype: Archetype): {
   return map[archetype]
 }
 
-export function getMonarchProgress(level: number): number {
-  return Math.min(100, Math.floor((level / 100) * 100))
-}
-
 export function getKaizenThreshold(cycleNumber: number): number {
   if (cycleNumber >= 4) return 7
   if (cycleNumber === 3) return 6

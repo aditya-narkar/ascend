@@ -141,11 +141,11 @@ export default async function AdminPage({
       {errors.length > 0 && (
         <div className="mx-8 mt-6 border border-error/40 bg-error/10 p-4 flex flex-col gap-2">
           <div className="font-mono text-system-label text-error flex items-center gap-2">
-            <span className="material-symbols-outlined text-[14px]">error</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[14px]">error</span>
             DATABASE QUERY ERRORS — CHECK SERVICE ROLE KEY AND TABLE PERMISSIONS
           </div>
           {errors.map((e) => (
-            <div key={e} className="font-mono text-[10px] text-error/70">{e}</div>
+            <div key={e} className="font-mono text-xs text-error/70">{e}</div>
           ))}
         </div>
       )}
@@ -165,7 +165,7 @@ export default async function AdminPage({
           >
             <div className="flex justify-between items-start">
               <span className="font-mono text-system-label text-on-surface-variant">{stat.label}</span>
-              <span className="material-symbols-outlined text-outline-variant">{stat.icon}</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-outline-variant">{stat.icon}</span>
             </div>
             <div className={`font-display text-display-lg ${stat.color} leading-none`}>{stat.value}</div>
           </div>
@@ -175,13 +175,13 @@ export default async function AdminPage({
       {/* ── Hunter records ────────────────────────────────────────────────────── */}
       <section className="px-8 pb-8">
         <h2 className="font-mono text-system-label text-on-surface-variant mb-6 flex items-center gap-2">
-          <span className="material-symbols-outlined text-[16px]">person_search</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-[16px]">person_search</span>
           HUNTER RECORDS
         </h2>
 
         {rawUsers.length === 0 && errors.length === 0 ? (
           <div className="text-center py-20">
-            <span className="material-symbols-outlined text-[48px] text-outline mb-4 block">
+            <span aria-hidden="true" className="material-symbols-outlined text-[48px] text-outline mb-4 block">
               person_search
             </span>
             <div className="font-mono text-system-label text-outline">NO HUNTERS REGISTERED</div>

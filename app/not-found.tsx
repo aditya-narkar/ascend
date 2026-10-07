@@ -23,7 +23,7 @@ export default function NotFound() {
           LOCATION NOT FOUND
         </p>
         <p
-          className="text-xs text-text-secondary/50 mb-8"
+          className="text-xs text-text-secondary mb-8"
           style={{ fontFamily: 'var(--font-share-tech-mono)' }}
         >
           The system could not locate this resource.

@@ -29,8 +29,8 @@ export default function CompletionRing({ completed, total, minimum }: Completion
   }[state]
 
   const messageColor = {
-    empty: '#4A5280',
-    progress: '#8D96B8',
+    empty: '#938ea0',
+    progress: '#c9c4d6',
     threshold: '#6CCBFF',
     complete: '#34D399',
   }[state]
@@ -50,8 +50,8 @@ export default function CompletionRing({ completed, total, minimum }: Completion
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-      <div style={{ position: 'relative' }}>
-        <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+      <div style={{ position: 'relative' }} role="img" aria-label={`${completed} of ${total} quests complete, minimum ${minimum} for streak. ${message}`}>
+        <svg aria-hidden="true" width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
           <circle
             cx={size / 2}
             cy={size / 2}
@@ -122,7 +122,7 @@ export default function CompletionRing({ completed, total, minimum }: Completion
               {completed}
             </span>
             <span
-              style={{ fontFamily: "var(--font-mono)", fontSize: '10px', color: '#8D96B8' }}
+              style={{ fontFamily: "var(--font-mono)", fontSize: '12px', color: '#c9c4d6' }}
             >
               /{total}
             </span>
@@ -133,7 +133,7 @@ export default function CompletionRing({ completed, total, minimum }: Completion
       <p
         style={{
           fontFamily: "var(--font-mono)",
-          fontSize: '7px',
+          fontSize: '12px',
           letterSpacing: '1px',
           color: messageColor,
           margin: 0,

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { logout } from '@/app/actions/auth'
+import NotificationCard from '@/components/NotificationCard'
 import type { UserProfile, Stats } from '@/lib/types'
 
 const RANK_ORDER = ['F', 'E', 'D', 'C', 'B', 'A', 'S', 'Monarch'] as const
@@ -71,11 +72,13 @@ export default async function ProfilePage() {
 
       <div className="flex flex-col gap-4 px-4 mt-4">
 
+        <NotificationCard />
+
         {/* Founding Oath */}
         <div className="card-gradient border border-outline-variant p-5 relative">
           <div className="absolute top-0 left-0 w-full h-0.5 bg-primary-container/30" />
           <h3 className="font-mono text-system-label text-on-surface-variant mb-3 flex items-center gap-2">
-            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>menu_book</span>
+            <span aria-hidden="true" className="material-symbols-outlined" style={{ fontSize: '14px' }}>menu_book</span>
             FOUNDING OATH
           </h3>
           <p className="font-display text-[15px] italic text-on-surface/80 leading-relaxed">
@@ -86,7 +89,7 @@ export default async function ProfilePage() {
         {/* Battle Record — 4 items matching screenshot */}
         <div className="flex flex-col gap-3">
           <h3 className="font-mono text-system-label text-on-surface-variant flex items-center gap-2">
-            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>military_tech</span>
+            <span aria-hidden="true" className="material-symbols-outlined" style={{ fontSize: '14px' }}>military_tech</span>
             BATTLE RECORD
           </h3>
           <div className="grid grid-cols-2 gap-3">
@@ -107,7 +110,7 @@ export default async function ProfilePage() {
         {/* Titles & Achievements */}
         <div className="flex flex-col gap-3">
           <h3 className="font-mono text-system-label text-on-surface-variant flex items-center gap-2">
-            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>workspace_premium</span>
+            <span aria-hidden="true" className="material-symbols-outlined" style={{ fontSize: '14px' }}>workspace_premium</span>
             TITLES &amp; ACHIEVEMENTS
           </h3>
           <div className="grid grid-cols-2 gap-3">
@@ -121,9 +124,9 @@ export default async function ProfilePage() {
                 }`}
               >
                 {!earned && (
-                  <span className="material-symbols-outlined text-outline" style={{ fontSize: '14px' }}>lock</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-outline" style={{ fontSize: '14px' }}>lock</span>
                 )}
-                <span className={`font-mono text-[10px] tracking-widest ${earned ? 'text-secondary' : 'text-outline'}`}>
+                <span className={`font-mono text-xs tracking-widest ${earned ? 'text-secondary' : 'text-outline'}`}>
                   {name}
                 </span>
               </div>

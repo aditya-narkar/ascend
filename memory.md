@@ -103,6 +103,8 @@ Routes:
 - `/stats`
 - `/profile`
 
+Bottom nav has three tabs: TODAY (`/dashboard`), STATS, PROFILE. Logout is only on `/profile`.
+
 Protected layout: [`app/(protected)/layout.tsx`](/C:/Users/Aditya/project/ascend/app/(protected)/layout.tsx)
 
 - wraps content
@@ -133,7 +135,7 @@ Primary client UI: [`app/components/DashboardClient.tsx`](/C:/Users/Aditya/proje
 
 ### Dashboard client responsibilities
 
-- CompletionRing in identity card updates instantly from optimistic quest state
+- CompletionRing in the compact "Today" card updates instantly from optimistic quest state
 - StreakCard replaces the old two-column streak grid; shows shield state and cycle days
 - pending_system_message is read and cleared server-side before render, passed as `shieldMessage` prop
 - optimistic quest completion/uncompletion
@@ -141,9 +143,9 @@ Primary client UI: [`app/components/DashboardClient.tsx`](/C:/Users/Aditya/proje
 - show cycle report overlay
 - show selection-phase overlay
 - show penalty-zone overlay
-- display daily hunt, elite quest, XP, stat cards, streak, cycle info
+- layout order (top to bottom): penalty/cycle banners, sticky header, reminder nudge (only when alerts were never asked), compact Today card (ring + level + XP + day-reset countdown), Daily Hunt (filter chips built from present categories, penalty quests, quest list), Elite quest, Streak card, 4 stat tiles. The quest list is intentionally above the fold; do not push status chrome above it
 - subscribe to Supabase realtime updates for `quests` table by `user_id`
-- silently register/save push subscription after login if notification permission is already granted
+- push/notification logic lives in [`lib/useNotifications.ts`](/C:/Users/Aditya/project/ascend/lib/useNotifications.ts) (availability + permission + silent re-subscribe when already granted + enable/test actions). The dashboard calls the hook only for the silent sync and the slim "Turn on quest reminders" nudge (dismissal stored in `localStorage` key `ascendAlertsNudgeDismissed`); the full controls are [`components/NotificationCard.tsx`](/C:/Users/Aditya/project/ascend/components/NotificationCard.tsx) on `/profile#alerts`
 - show level-up and daily-summary overlays
 
 ### Daily hunt rules
@@ -431,6 +433,7 @@ File: [`app/(protected)/profile/page.tsx`](/C:/Users/Aditya/project/ascend/app/(
 Shows:
 
 - hunter identity card
+- alerts card (`NotificationCard`: enable / send test / blocked & unsupported diagnostics)
 - archetype
 - rank/day number
 - commitment text
@@ -601,11 +604,19 @@ The app has a strong "system / hunter / ascension" visual identity.
 UI patterns:
 
 - dark sci-fi palette
-- Rajdhani for headings
-- Share Tech Mono for system text
+- Space Grotesk (`font-display`), JetBrains Mono (`font-mono`) and Inter (`font-body`) via `next/font` in `app/layout.tsx` (legacy `--font-rajdhani` / `--font-share-tech-mono` names are only aliases)
 - dense uppercase labels
 - glow, flicker, scan-line, pulse animations
 - mobile-first, card-heavy layout
+
+Accessibility conventions (keep these when adding UI):
+
+- no text under 12px (`text-xs` / `text-system-label` minimum); no inline `fontSize` below 12; no faded-opacity body text (use token colors, they already meet contrast)
+- every interactive control is at least 44px tall (`min-h-11`); icon-only buttons need `aria-label`; decorative Material Symbols spans need `aria-hidden="true"`
+- form inputs need `<label htmlFor>` + `id`; error text uses `role="alert"`, transient toasts use `role="status"`
+- modals use `role="dialog" aria-modal`, close on Escape and autofocus their dismiss button
+- a global `:focus-visible` outline and a `prefers-reduced-motion` block live in `app/globals.css`; do not add `focus:outline-none` without a replacement ring
+- progress rings/bars expose `role="img"` / `role="progressbar"` with a text equivalent
 
 Avoid flattening this into generic SaaS styling unless explicitly requested.
 
