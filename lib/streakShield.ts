@@ -4,44 +4,6 @@ import type { UserProfile } from '@/lib/types'
 
 type ShieldUser = Pick<UserProfile, 'cycle_days_completed' | 'streak_shield_active' | 'streak_shield_used_date'>
 
-export async function checkAndAwardShield(userId: string, supabase: SupabaseClient) {
-  const { data: user } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', userId)
-    .single<UserProfile>()
-
-  if (!user) return { shieldAwarded: false }
-
-  if (
-    user.cycle_days_completed > 0 &&
-    user.cycle_days_completed % 21 === 0 &&
-    !user.streak_shield_active
-  ) {
-    await supabase
-      .from('users')
-      .update({
-        streak_shield_active: true,
-        last_shield_earned_date: gameDate(),
-      })
-      .eq('id', userId)
-
-    return { shieldAwarded: true }
-  }
-
-  return { shieldAwarded: false }
-}
-
-export async function consumeShield(userId: string, supabase: SupabaseClient) {
-  await supabase
-    .from('users')
-    .update({
-      streak_shield_active: false,
-      streak_shield_used_date: gameDate(),
-    })
-    .eq('id', userId)
-}
-
 export function getShieldState(user: ShieldUser): 'active' | 'used' | 'not_earned' {
   if (user.streak_shield_active) return 'active'
   if (user.streak_shield_used_date) return 'used'

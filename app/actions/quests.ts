@@ -7,7 +7,6 @@ import {
   getRankFromLevel,
   getXPToNextLevel,
   getKaizenThreshold,
-  getWeekNumber,
 } from '@/lib/utils'
 import { gameDate } from '@/lib/date'
 import { updateStreak } from '@/lib/streakShield'
@@ -18,122 +17,6 @@ import type { QuestCompletionResult, Quest, QuestPool } from '@/lib/types'
 // The DB unique constraint on (user_id, quest_pool_id, date_assigned) is the final guard.
 const generatingUsers = new Set<string>()
 const generatedDates = new Map<string, string>()  // userId → lastGeneratedDate
-
-// ── Daily quest generation ────────────────────────────────────
-
-export async function generateDailyQuests(userId: string) {
-  const supabase = await createClient()
-  const today = gameDate()
-
-  // Clean up stale incomplete quests from previous days
-  await supabase
-    .from('quests')
-    .delete()
-    .eq('user_id', userId)
-    .neq('date_assigned', today)
-    .eq('is_completed', false)
-
-  const { data: activeSelections } = await supabase
-    .from('quest_selections')
-    .select('*, quest_pools(*)')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .gte('expires_date', today)
-
-  if (!activeSelections || activeSelections.length === 0) return
-
-  // Quick check: if all expected quests already exist, skip generation
-  const { count: todayCount } = await supabase
-    .from('quests')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('date_assigned', today)
-
-  if (todayCount !== null && todayCount >= activeSelections.length) return
-
-  for (const sel of activeSelections) {
-    const pool = sel.quest_pools
-    if (!pool) continue
-
-    const { count } = await supabase
-      .from('quests')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('date_assigned', today)
-      .eq('quest_pool_id', pool.id)
-
-    if (count && count > 0) continue
-
-    await supabase.from('quests').insert({
-      user_id: userId,
-      title: pool.title,
-      description: pool.description,
-      category: pool.category,
-      quest_type: 'side',
-      xp_reward: pool.xp_reward,
-      stat_target: pool.stat_target,
-      stat_reward: pool.stat_reward ?? 1,
-      is_completed: false,
-      date_assigned: today,
-      date_completed: null,
-      quest_pool_id: pool.id,
-    })
-  }
-
-  // Elite quest: weekly rotation, E-rank (level 6+) only
-  const { data: userProfile } = await supabase
-    .from('users')
-    .select('level, elite_quest_assigned_week')
-    .eq('id', userId)
-    .single()
-
-  if (userProfile && userProfile.level >= 6) {
-    const currentWeek = getWeekNumber()
-    const { data: elitePools } = await supabase
-      .from('quest_pools')
-      .select('*')
-      .eq('category', 'elite')
-      .order('title')
-
-    if (elitePools && elitePools.length > 0) {
-      const weekIndex = currentWeek % elitePools.length
-      const elitePool = elitePools[weekIndex]
-
-      const { count: eliteExists } = await supabase
-        .from('quests')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('date_assigned', today)
-        .eq('quest_type', 'elite')
-
-      if (!eliteExists || eliteExists === 0) {
-        await supabase.from('quests').insert({
-          user_id: userId,
-          title: elitePool.title,
-          description: elitePool.description,
-          category: elitePool.category,
-          quest_type: 'elite',
-          xp_reward: elitePool.xp_reward,
-          stat_target: elitePool.stat_target,
-          stat_reward: elitePool.stat_reward ?? 2,
-          is_completed: false,
-          date_assigned: today,
-          date_completed: null,
-          quest_pool_id: elitePool.id,
-        })
-
-        // Record which week's quest was assigned so Monday rotation works correctly
-        const assignedWeek = (userProfile as Record<string, unknown>).elite_quest_assigned_week as number | null
-        if (assignedWeek !== currentWeek) {
-          await supabase
-            .from('users')
-            .update({ elite_quest_assigned_week: currentWeek })
-            .eq('id', userId)
-        }
-      }
-    }
-  }
-}
 
 // ── Ensure today's quests exist, generating if needed ────────
 // Safe to call from both server components and client (via server action).

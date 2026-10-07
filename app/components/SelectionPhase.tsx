@@ -39,21 +39,6 @@ export default function SelectionPhase({ cycleNumber, questPoolsByCategory, prev
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  // ── Bounds check — should never render with an out-of-range index ──
-  if (categoryIndex >= CATEGORY_CONFIG.length) {
-    handleComplete()
-    return (
-      <div className="fixed inset-0 z-[100] bg-bg-primary flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 mx-auto border border-aura-primary/50 rounded-full flex items-center justify-center mb-4">
-            <div className="w-2 h-2 rounded-full bg-highlight-1 animate-pulse" />
-          </div>
-          <p className="text-xs tracking-[0.4em] text-text-secondary">LOCKING IN CYCLE {cycleNumber}...</p>
-        </div>
-      </div>
-    )
-  }
-
   const currentCat = CATEGORY_CONFIG[categoryIndex]
   const currentPools = questPoolsByCategory[currentCat.key] ?? []
   const currentSelected = selections[currentCat.key] ?? []
@@ -86,8 +71,6 @@ export default function SelectionPhase({ cycleNumber, questPoolsByCategory, prev
     if (result?.error) {
       setError(result.error)
       setSubmitting(false)
-      // Pull index back so user sees the UI instead of the loading screen
-      setCategoryIndex(CATEGORY_CONFIG.length - 1)
       return
     }
 

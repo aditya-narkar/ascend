@@ -81,17 +81,6 @@ export interface Quest {
   quest_pool_id: string | null
 }
 
-export interface ArchetypeQuest {
-  id: string
-  archetype: Archetype
-  title: string
-  description: string | null
-  category: QuestCategory
-  xp_reward: number
-  stat_target: string | null
-  difficulty: QuestDifficulty
-}
-
 export interface QuestPool {
   id: string
   title: string

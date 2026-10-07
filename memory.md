@@ -180,12 +180,7 @@ Important behavior:
 
 ### Elite quest behavior
 
-There are two different elite assignment strategies in the codebase:
-
-- `generateDailyQuests` uses `getWeekNumber()` plus `users.elite_quest_assigned_week`
-- `ensureTodayQuests` uses weeks since `users.created_at`
-
-This is an implementation inconsistency worth preserving in memory because future work should unify it rather than accidentally deepen the split.
+Elite quests are assigned only in `ensureTodayQuests`: for level 6+ users, the pool is picked by weeks since `users.created_at` (`elite_pools[weeksSinceCreated % pools.length]`). The old `generateDailyQuests` path (global week number + `users.elite_quest_assigned_week`) was deleted; the `elite_quest_assigned_week` column is now unused.
 
 ## Selection cycle system
 
@@ -554,7 +549,7 @@ Very important:
 
 ## Environment variables
 
-Defined in [`.env.local.example`](/C:/Users/Aditya/project/ascend/.env.local.example):
+Set these in `.env.local` and in the Vercel/Supabase environments (there is no committed example file; `.env*` is gitignored):
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
@@ -616,10 +611,8 @@ Avoid flattening this into generic SaaS styling unless explicitly requested.
 
 ## Known implementation quirks and risks
 
-- `README.md` is still the default create-next-app README and does not describe the real project.
 - The Expo native app and root Expo/EAS configs were removed; the repo should remain focused on the Next.js website/PWA unless native is intentionally reintroduced.
 - There are several visible mojibake characters in file output when viewed via PowerShell, likely from encoding/display mismatch rather than intended copy changes.
-- Elite quest assignment logic is inconsistent between `generateDailyQuests` and `ensureTodayQuests`.
 - `cycles.total_days_active` appears in the schema and UI report types, but I did not find active update logic for it.
 - `archetype_quests` remains in schema/seed data but active daily generation comes from `quest_pools`.
 - There is duplicate auth/onboarding redirect logic in both route handling and the root page, so changes to access rules should keep both paths aligned.

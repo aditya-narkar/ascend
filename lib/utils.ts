@@ -1,4 +1,4 @@
-import type { Archetype, Rank, QuestDifficulty } from './types'
+import type { Archetype, Rank } from './types'
 
 export function assignArchetype(struggle: string, killer: string): Archetype {
   if (struggle === 'consistency' && killer === 'badday') return 'Dormant Titan'
@@ -58,16 +58,6 @@ export function getXPToNextLevel(level: number): number {
   return level * 500
 }
 
-export function getXPReward(difficulty: QuestDifficulty): number {
-  const map: Record<QuestDifficulty, number> = {
-    small: 30,
-    medium: 70,
-    hard: 120,
-    elite: 150,
-  }
-  return map[difficulty]
-}
-
 export function getArchetypeDescription(archetype: Archetype): {
   description: string
   weakness: string
@@ -114,45 +104,6 @@ export function getArchetypeDescription(archetype: Archetype): {
   return map[archetype]
 }
 
-export function getUniversalQuest(dayOfYear: number): {
-  title: string
-  description: string
-  category: 'physical' | 'mental' | 'discipline'
-  xp_reward: number
-  stat_target: string
-} {
-  const quests = [
-    {
-      title: 'Hydration Protocol',
-      description: 'Drink 8 glasses of water today. Track each one.',
-      category: 'discipline' as const,
-      xp_reward: 30,
-      stat_target: 'energy',
-    },
-    {
-      title: 'Movement Directive',
-      description: 'Move your body for 30 continuous minutes. No excuses.',
-      category: 'physical' as const,
-      xp_reward: 30,
-      stat_target: 'strength',
-    },
-    {
-      title: 'System Log Entry',
-      description: 'Write a journal entry: 5+ sentences about your day and mindset.',
-      category: 'mental' as const,
-      xp_reward: 30,
-      stat_target: 'focus',
-    },
-  ]
-  return quests[dayOfYear % 3]
-}
-
-export function getDayOfYear(date: Date): number {
-  const start = new Date(date.getFullYear(), 0, 0)
-  const diff = date.getTime() - start.getTime()
-  return Math.floor(diff / (1000 * 60 * 60 * 24))
-}
-
 export function getMonarchProgress(level: number): number {
   return Math.min(100, Math.floor((level / 100) * 100))
 }
@@ -162,10 +113,6 @@ export function getKaizenThreshold(cycleNumber: number): number {
   if (cycleNumber === 3) return 6
   if (cycleNumber === 2) return 5
   return 4
-}
-
-export function getWeekNumber(): number {
-  return Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000))
 }
 
 export function getRankColor(rank: Rank): string {
