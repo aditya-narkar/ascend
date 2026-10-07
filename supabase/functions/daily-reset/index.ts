@@ -4,7 +4,21 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const cronSecret = Deno.env.get('CRON_SECRET') ?? ''
 
-const supabase = createClient(supabaseUrl, serviceRoleKey)
+// Log failed database/RPC requests (supabase-js otherwise returns `{ error }` that unchecked calls
+// drop silently). Copy of loggingFetch in lib/supabase/logFetch.ts — keep them in sync.
+const loggingFetch: typeof fetch = async (input, init) => {
+  const res = await fetch(input, init)
+  if (!res.ok && res.status !== 406) {
+    const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+    const { pathname } = new URL(href)
+    if (pathname.startsWith('/rest/v1/')) {
+      console.error(`[supabase] ${init?.method ?? 'GET'} ${pathname} -> ${res.status}`, await res.clone().text())
+    }
+  }
+  return res
+}
+
+const supabase = createClient(supabaseUrl, serviceRoleKey, { global: { fetch: loggingFetch } })
 
 type UserRow = {
   id: string

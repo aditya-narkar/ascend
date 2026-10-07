@@ -551,6 +551,10 @@ Very important:
 - Still local-time by design: the Penalty Zone rest window (23:00-07:00 device time).
 - Before the IST switch the game day was UTC (rollover at 05:30 IST). Existing dates stay valid if the switch is deployed between ~06:00 and ~23:30 IST (see `supabase-game-day-ist.sql`).
 
+## Silent-failure logging
+
+supabase-js resolves failed queries as `{ error }` instead of throwing, and most calls in this codebase do not check it, so a missing column, missing RPC or RLS denial used to fail silently (that is how the missing penalty functions and shield columns went unnoticed). Every server-side client (`lib/supabase/server.ts`, `lib/supabase/admin.ts`, `proxy.ts`, and `supabase/functions/daily-reset`) passes `global: { fetch: loggingFetch }` ([`lib/supabase/logFetch.ts`](/C:/Users/Aditya/project/ascend/lib/supabase/logFetch.ts)), which `console.error`s every failed PostgREST/RPC request as `[supabase] METHOD /rest/v1/<table> -> <status> <error body>` (path and PostgREST message only; never the query string or request body). Auth failures and 406 (`.single()` with no row) are intentionally not logged. Check the Vercel function logs and Supabase edge-function logs for lines starting with `[supabase]` when something silently does nothing; `supabase-diagnose.sql` then shows which migration is missing. Any new server-side Supabase client must use it. `node --experimental-strip-types scripts/check-logfetch.mjs` asserts the rules. The edge functions `send-notification` and `notification-scheduler` do not use it yet (planned with the shared edge code).
+
 ## Environment variables
 
 Set these in `.env.local` and in the Vercel/Supabase environments (there is no committed example file; `.env*` is gitignored):
