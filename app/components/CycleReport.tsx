@@ -1,5 +1,8 @@
 'use client'
 
+import Button from '@/components/ui/Button'
+import Card from '@/components/ui/Card'
+import ProgressBar from '@/components/ui/ProgressBar'
 import type { CycleReportData } from '@/lib/types'
 
 interface Props {
@@ -7,127 +10,82 @@ interface Props {
   onContinue: () => void
 }
 
+// Tier colours are theme tokens passed as CSS values (they also feed a gradient fill).
+const TIERS = [
+  { min: 80, text: 'EXCEPTIONAL', color: 'var(--color-secondary)' },
+  { min: 60, text: 'SOLID', color: 'var(--color-glow-cyan)' },
+  { min: 40, text: 'DEVELOPING', color: 'var(--color-primary)' },
+  { min: 0, text: 'NEEDS WORK', color: 'var(--color-tertiary)' },
+]
+
 export default function CycleReport({ report, onContinue }: Props) {
   const { cycle, totalCompletions, totalDaysActive, bestStreak, newCycleNumber } = report
   const possible = 21 * 9 // 9 quests × 21 days theoretical max
   const completionRate = Math.round((totalCompletions / possible) * 100)
-
-  const performanceLabel =
-    completionRate >= 80
-      ? { text: 'EXCEPTIONAL', color: '#8EF0FF' }
-      : completionRate >= 60
-      ? { text: 'SOLID', color: '#6CCBFF' }
-      : completionRate >= 40
-      ? { text: 'DEVELOPING', color: '#A78BFA' }
-      : { text: 'NEEDS WORK', color: '#F59E0B' }
+  const tier = TIERS.find((t) => completionRate >= t.min)!
 
   return (
-    <div className="fixed inset-0 z-[100] bg-bg-primary flex items-center justify-center p-4 overflow-y-auto">
+    <main className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-background p-4">
       <div className="w-full max-w-md py-8">
-        {/* Header */}
-        <div className="text-center mb-10 fade-in-up">
-          <p className="text-xs tracking-[0.5em] text-text-secondary mb-3">CYCLE {cycle.cycle_number} COMPLETE</p>
-          <h1
-            className="text-4xl font-bold tracking-widest"
-            style={{ fontFamily: 'var(--font-rajdhani)', color: performanceLabel.color }}
-          >
-            {performanceLabel.text}
+        <div className="fade-in-up mb-10 text-center">
+          <p className="mb-3 font-mono text-xs tracking-[0.5em] text-on-surface-variant">CYCLE {cycle.cycle_number} COMPLETE</p>
+          <h1 className="font-display text-4xl font-bold tracking-widest" style={{ color: tier.color }}>
+            {tier.text}
           </h1>
-          <div className="mt-3 h-px bg-gradient-to-r from-transparent via-aura-primary to-transparent" />
+          <div className="mt-3 h-px bg-gradient-to-r from-transparent via-primary-container to-transparent" />
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3 mb-5 fade-in-up" style={{ animationDelay: '0.1s' }}>
-          <MetricCard
-            label="QUESTS COMPLETED"
-            value={totalCompletions.toString()}
-            sub={`of ~${possible} possible`}
-            color="#6CCBFF"
-          />
-          <MetricCard
-            label="DAYS ACTIVE"
-            value={totalDaysActive.toString()}
-            sub="of 21 days"
-            color="#A78BFA"
-          />
-          <MetricCard
-            label="BEST STREAK"
-            value={bestStreak.toString()}
-            sub="days"
-            color="#8EF0FF"
-          />
-          <MetricCard
-            label="COMPLETION RATE"
-            value={`${completionRate}%`}
-            sub="of theoretical max"
-            color={performanceLabel.color}
-          />
+        <div className="fade-in-up mb-5 grid grid-cols-2 gap-3" style={{ animationDelay: '0.1s' }}>
+          <Metric label="QUESTS COMPLETED" value={totalCompletions.toString()} sub={`of ~${possible} possible`} color="var(--color-glow-cyan)" />
+          <Metric label="DAYS ACTIVE" value={totalDaysActive.toString()} sub="of 21 days" color="var(--color-primary)" />
+          <Metric label="BEST STREAK" value={bestStreak.toString()} sub="days" color="var(--color-secondary)" />
+          <Metric label="COMPLETION RATE" value={`${completionRate}%`} sub="of theoretical max" color={tier.color} />
         </div>
 
-        {/* Cycle progress bar */}
-        <div className="bg-card border border-border rounded-sm p-4 mb-5 fade-in-up" style={{ animationDelay: '0.2s' }}>
-          <div className="flex justify-between text-xs text-text-secondary mb-2 tracking-widest">
+        <Card className="fade-in-up mb-5 p-4" style={{ animationDelay: '0.2s' }}>
+          <div className="mb-2 flex justify-between font-mono text-xs tracking-widest text-on-surface-variant">
             <span>CYCLE PERFORMANCE</span>
-            <span style={{ color: performanceLabel.color }}>{completionRate}%</span>
+            <span style={{ color: tier.color }}>{completionRate}%</span>
           </div>
-          <div className="h-2 bg-bg-secondary rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-1000"
-              style={{
-                width: `${completionRate}%`,
-                background: `linear-gradient(90deg, #4B2DBD, ${performanceLabel.color})`,
-                boxShadow: `0 0 10px ${performanceLabel.color}44`,
-              }}
-            />
-          </div>
-        </div>
+          <ProgressBar
+            label="Cycle performance"
+            value={completionRate}
+            fill={`linear-gradient(90deg, var(--color-primary-container), ${tier.color})`}
+            className="h-2"
+          />
+        </Card>
 
-        {/* Next cycle info */}
-        <div className="bg-card border border-border/60 rounded-sm p-4 mb-6 fade-in-up" style={{ animationDelay: '0.3s' }}>
-          <p className="text-xs tracking-[0.3em] text-text-secondary mb-2">CYCLE {newCycleNumber} INCOMING</p>
-          <p className="text-text-secondary text-xs leading-relaxed">
+        <Card className="fade-in-up mb-6 p-4" style={{ animationDelay: '0.3s' }}>
+          <p className="mb-2 font-mono text-xs tracking-[0.3em] text-on-surface-variant">CYCLE {newCycleNumber} INCOMING</p>
+          <p className="font-body text-sm leading-relaxed text-on-surface-variant">
             Select your next 21-day quest loadout. Harder quests are available — upgrade your selections to increase the challenge and unlock greater rewards.
           </p>
           {newCycleNumber >= 2 && (
-            <div className="mt-3 flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-highlight-1" />
-              <p className="text-xs text-highlight-1">
-                Streak threshold raised to {newCycleNumber === 2 ? 5 : newCycleNumber === 3 ? 6 : 7} completions/day
-              </p>
-            </div>
+            <p className="mt-3 flex items-center gap-2 font-mono text-xs text-secondary">
+              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-secondary" />
+              Streak threshold raised to {newCycleNumber === 2 ? 5 : newCycleNumber === 3 ? 6 : 7} quests per day
+            </p>
           )}
-        </div>
+        </Card>
 
-        <button
-          onClick={onContinue}
-          className="w-full bg-aura-primary hover:bg-aura-primary/80 text-text-primary font-bold tracking-widest py-4 rounded-sm transition-all aura-glow-sm fade-in-up"
-          style={{ fontFamily: 'var(--font-rajdhani)', fontSize: '1rem', animationDelay: '0.4s' }}
-        >
-          BEGIN CYCLE {newCycleNumber}
-        </button>
+        <div className="fade-in-up" style={{ animationDelay: '0.4s' }}>
+          <Button size="lg" block onClick={onContinue}>
+            BEGIN CYCLE {newCycleNumber}
+          </Button>
+        </div>
       </div>
-    </div>
+    </main>
   )
 }
 
-function MetricCard({
-  label,
-  value,
-  sub,
-  color,
-}: {
-  label: string
-  value: string
-  sub: string
-  color: string
-}) {
+function Metric({ label, value, sub, color }: { label: string; value: string; sub: string; color: string }) {
   return (
-    <div className="bg-card border border-border rounded-sm p-4">
-      <p className="text-xs tracking-widest text-text-secondary mb-2">{label}</p>
-      <p className="text-3xl font-bold" style={{ fontFamily: 'var(--font-rajdhani)', color }}>
+    <Card className="p-4">
+      <p className="mb-2 font-mono text-xs tracking-widest text-on-surface-variant">{label}</p>
+      <p className="font-display text-3xl font-bold" style={{ color }}>
         {value}
       </p>
-      <p className="text-xs text-text-secondary mt-1">{sub}</p>
-    </div>
+      <p className="mt-1 font-mono text-xs text-on-surface-variant">{sub}</p>
+    </Card>
   )
 }

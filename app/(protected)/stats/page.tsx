@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { gameDate } from '@/lib/date'
+import Card from '@/components/ui/Card'
+import ProgressBar from '@/components/ui/ProgressBar'
 import type { UserProfile, Stats, QuestSelection } from '@/lib/types'
 
 const STAT_CONFIG = [
@@ -86,9 +88,7 @@ export default async function StatsPage() {
       </div>
 
       {/* Rank card */}
-      <section className="card-gradient border border-outline-variant p-6 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-6 h-6 border-t border-r border-primary-container opacity-40" />
-        <div className="absolute bottom-0 left-0 w-6 h-6 border-b border-l border-primary-container opacity-40" />
+      <Card as="section" corners className="p-6">
         <div className="flex flex-col items-center justify-center space-y-3 relative z-10">
           <div className="font-mono text-system-label text-secondary tracking-[0.3em]">CURRENT RANK</div>
           <div className="font-display text-[80px] leading-none text-primary level-glow font-bold">
@@ -102,14 +102,10 @@ export default async function StatsPage() {
               <span>XP: {profile.current_xp.toLocaleString()} / {profile.xp_to_next_level.toLocaleString()}</span>
               <span className="text-secondary">{xpPercent}%</span>
             </div>
-            <div className="h-1 bg-surface-container-high w-full relative overflow-hidden">
-              <div className="absolute top-0 left-0 h-full bg-secondary transition-all" style={{ width: `${xpPercent}%` }}>
-                <div className="absolute right-0 top-0 bottom-0 w-2 bg-white/50 blur-[2px]" />
-              </div>
-            </div>
+            <ProgressBar label="Experience to next level" value={profile.current_xp} max={profile.xp_to_next_level} />
           </div>
         </div>
-      </section>
+      </Card>
 
       {/* Stats — single column */}
       <section className="flex flex-col gap-4">
@@ -123,7 +119,7 @@ export default async function StatsPage() {
               : 'NO CHANGE'
           const deltaColor = delta > 0 ? color : delta < 0 ? 'text-error' : 'text-on-surface-variant'
           return (
-            <div key={key} className="card-gradient border border-border-card p-4 flex flex-col gap-3">
+            <Card key={key} className="p-4 flex flex-col gap-3">
               <div className="flex justify-between items-center">
                 <div className="font-mono text-system-label text-on-surface-variant uppercase tracking-wider">{key}</div>
                 <span aria-hidden="true" className={`material-symbols-outlined ${color}`} style={{ fontSize: '20px', fontVariationSettings: "'FILL' 1" }}>{icon}</span>
@@ -132,18 +128,14 @@ export default async function StatsPage() {
                 <div className="font-display text-headline-lg text-on-surface">{val}</div>
                 <div className={`font-mono text-system-label mb-1 ${deltaColor}`}>{deltaLabel}</div>
               </div>
-              <div className="h-1 bg-surface-container-high w-full relative overflow-hidden">
-                <div className="h-full absolute top-0 left-0 transition-all" style={{ width: `${Math.min(val, 100)}%`, background: bar }}>
-                  <div className="absolute right-0 top-0 bottom-0 w-2 bg-white/40 blur-[2px]" />
-                </div>
-              </div>
-            </div>
+              <ProgressBar label={`${key} stat`} value={val} fill={bar} />
+            </Card>
           )
         })}
       </section>
 
       {/* Operational Streak */}
-      <section className="card-gradient border border-outline-variant p-5">
+      <Card as="section" className="p-5">
         <div className="font-mono text-system-label text-on-surface-variant mb-4 pb-2 border-b border-outline-variant">
           OPERATIONAL STREAK
         </div>
@@ -185,10 +177,10 @@ export default async function StatsPage() {
             </>
           )}
         </div>
-      </section>
+      </Card>
 
       {/* Milestone Log */}
-      <section className="card-gradient border border-outline-variant p-5">
+      <Card as="section" className="p-5">
         <div className="font-mono text-system-label text-on-surface-variant mb-4 pb-2 border-b border-outline-variant">
           MILESTONE LOG
         </div>
@@ -211,7 +203,7 @@ export default async function StatsPage() {
             <p className="font-mono text-system-label text-outline text-center">No milestones yet. Begin ascending.</p>
           )}
         </div>
-      </section>
+      </Card>
     </div>
   )
 }

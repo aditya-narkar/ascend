@@ -13,14 +13,11 @@ import { updateStreak } from '@/lib/streakShield'
 import { sendPushNotification } from '@/app/actions/notifications'
 import type { QuestCompletionResult, Quest, QuestPool } from '@/lib/types'
 
-// Per-user generation locks — prevent concurrent or redundant generation within one process.
-// The DB unique constraint on (user_id, quest_pool_id, date_assigned) is the final guard.
-const generatingUsers = new Set<string>()
-const generatedDates = new Map<string, string>()  // userId → lastGeneratedDate
-
 // ── Ensure today's quests exist, generating if needed ────────
 // Safe to call from both server components and client (via server action).
-// Returns the quest list for today, generating from active selections if missing.
+// Idempotent: the unique constraint (user_id, quest_pool_id, date_assigned) plus
+// upsert/ignoreDuplicates makes concurrent calls (tabs, cron, retries) harmless,
+// so no in-process locks or caches are needed.
 
 export async function ensureTodayQuests(userId: string): Promise<{ needsSelection: boolean; quests: Quest[] }> {
   const supabase = await createClient()
@@ -38,162 +35,74 @@ export async function ensureTodayQuests(userId: string): Promise<{ needsSelectio
       console.error('[ensureTodayQuests] fetchToday failed:', error.message, error.details, error.hint)
       return []
     }
-
     return (data ?? []) as Quest[]
   }
 
-  // Skip if already generated in this process session today
-  if (generatedDates.get(userId) === today) {
-    return { needsSelection: false, quests: await fetchToday() }
-  }
+  // Hot path: today's quests already exist.
+  const existing = await fetchToday()
+  if (existing.length > 0) return { needsSelection: false, quests: existing }
 
-  // If today's quests already exist, return immediately — no generation needed
-  const { count } = await supabase
-    .from('quests')
-    .select('*', { count: 'exact', head: true })
+  // Any is_active selection counts (not filtered by expiry; checkAndExpireCycles handles that).
+  const { data: selections } = await supabase
+    .from('quest_selections')
+    .select('*, quest_pools(*)')
     .eq('user_id', userId)
-    .eq('date_assigned', today)
+    .eq('is_active', true)
 
-  if (count && count > 0) {
-    generatedDates.set(userId, today)
-    return { needsSelection: false, quests: await fetchToday() }
+  if (!selections || selections.length === 0) return { needsSelection: true, quests: [] }
+
+  // Clean up stale incomplete quests from prior days
+  await supabase
+    .from('quests')
+    .delete()
+    .eq('user_id', userId)
+    .neq('date_assigned', today)
+    .eq('is_completed', false)
+
+  const toRow = (pool: QuestPool, questType: 'side' | 'elite', defaultStatReward: number) => ({
+    user_id: userId,
+    quest_pool_id: pool.id,
+    title: pool.title,
+    description: pool.description,
+    category: pool.category,
+    quest_type: questType,
+    xp_reward: pool.xp_reward,
+    stat_target: pool.stat_target,
+    stat_reward: pool.stat_reward ?? defaultStatReward,
+    is_completed: false,
+    date_assigned: today,
+    date_completed: null,
+  })
+
+  // One quest per non-elite selection
+  const rows = selections.flatMap((sel) => {
+    const pool = sel.quest_pools as QuestPool | null
+    if (!pool) {
+      console.error('[ensureTodayQuests] quest_pools join returned null for selection', sel.id, '— pool id:', sel.quest_pool_id)
+      return []
+    }
+    return pool.category === 'elite' ? [] : [toRow(pool, 'side', 1)]
+  })
+
+  // Elite quest: weekly rotation for level 6+ (E-rank) users
+  const { data: userProfile } = await supabase.from('users').select('level, created_at').eq('id', userId).single()
+  if (userProfile && userProfile.level >= 6) {
+    const { data: elitePools } = await supabase.from('quest_pools').select('*').eq('category', 'elite').order('title')
+    if (elitePools && elitePools.length > 0) {
+      const week = Math.floor((Date.now() - new Date(userProfile.created_at).getTime()) / (7 * 24 * 60 * 60 * 1000))
+      rows.push(toRow(elitePools[week % elitePools.length] as QuestPool, 'elite', 2))
+    }
   }
 
-  // Generation lock — prevents concurrent duplicate inserts within the same process
-  if (generatingUsers.has(userId)) {
-    return { needsSelection: false, quests: await fetchToday() }
-  }
-  generatingUsers.add(userId)
-
-  try {
-    // Re-check after acquiring lock — another concurrent call may have already generated
-    const { count: recheck } = await supabase
+  if (rows.length > 0) {
+    const { error } = await supabase
       .from('quests')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('date_assigned', today)
-
-    if (recheck && recheck > 0) {
-      return { needsSelection: false, quests: await fetchToday() }
-    }
-
-    // Check active selections (not filtered by expiry — any is_active row)
-    const { data: selections } = await supabase
-      .from('quest_selections')
-      .select('*, quest_pools(*)')
-      .eq('user_id', userId)
-      .eq('is_active', true)
-
-    if (!selections || selections.length === 0) {
-      return { needsSelection: true, quests: [] }
-    }
-
-    // Clean up stale incomplete quests from prior days
-    await supabase
-      .from('quests')
-      .delete()
-      .eq('user_id', userId)
-      .neq('date_assigned', today)
-      .eq('is_completed', false)
-
-    // Insert exactly one quest per non-elite selection
-    const questsToInsert = selections.flatMap((sel) => {
-      const pool = sel.quest_pools as QuestPool | null
-      if (!pool) {
-        console.error('[ensureTodayQuests] quest_pools join returned null for selection', sel.id, '— pool id:', sel.quest_pool_id, '— the quest_pools table may need a schema reload or this quest_pool_id no longer exists')
-        return []
-      }
-      if (pool.category === 'elite') return []
-      return [{
-        user_id: userId,
-        quest_pool_id: sel.quest_pool_id,
-        title: pool.title,
-        description: pool.description,
-        category: pool.category,
-        quest_type: 'side' as const,
-        xp_reward: pool.xp_reward,
-        stat_target: pool.stat_target,
-        stat_reward: pool.stat_reward ?? 1,
-        is_completed: false,
-        date_assigned: today,
-        date_completed: null,
-      }]
-    })
-
-    const insertedQuests: Quest[] = []
-
-    if (questsToInsert.length > 0) {
-      const { data: inserted, error } = await supabase
-        .from('quests')
-        .upsert(questsToInsert, {
-          onConflict: 'user_id,quest_pool_id,date_assigned',
-          ignoreDuplicates: true,
-        })
-        .select()
-
-      if (error) {
-        console.error('[ensureTodayQuests] upsert failed:', error.message, error.details, error.hint)
-        return { needsSelection: false, quests: await fetchToday() }
-      }
-
-      if (inserted) insertedQuests.push(...(inserted as Quest[]))
-    }
-
-    // Elite quest: weekly rotation for level 6+ (E-rank) users
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('level, created_at')
-      .eq('id', userId)
-      .single()
-
-    if (userProfile && userProfile.level >= 6) {
-      const { data: elitePools } = await supabase
-        .from('quest_pools')
-        .select('*')
-        .eq('category', 'elite')
-        .order('title')
-
-      if (elitePools && elitePools.length > 0) {
-        const weekNumber = Math.floor(
-          (Date.now() - new Date(userProfile.created_at).getTime()) / (7 * 24 * 60 * 60 * 1000)
-        )
-        const elitePool = elitePools[weekNumber % elitePools.length] as QuestPool
-
-        const { data: eliteInserted } = await supabase
-          .from('quests')
-          .upsert(
-            {
-              user_id: userId,
-              quest_pool_id: elitePool.id,
-              title: elitePool.title,
-              description: elitePool.description,
-              category: elitePool.category,
-              quest_type: 'elite',
-              xp_reward: elitePool.xp_reward,
-              stat_target: elitePool.stat_target,
-              stat_reward: elitePool.stat_reward ?? 2,
-              is_completed: false,
-              date_assigned: today,
-              date_completed: null,
-            },
-            { onConflict: 'user_id,quest_pool_id,date_assigned', ignoreDuplicates: true },
-          )
-          .select()
-          .single()
-
-        if (eliteInserted) insertedQuests.push(eliteInserted as Quest)
-      }
-    }
-
-    // Always re-fetch from DB as the canonical source — upsert response can be empty
-    // on concurrent requests (race with cron) and insertedQuests misses elite quests
-    // that were already in DB from a prior call.
-    generatedDates.set(userId, today)
-    const finalQuests = await fetchToday()
-    return { needsSelection: false, quests: finalQuests.length > 0 ? finalQuests : insertedQuests }
-  } finally {
-    generatingUsers.delete(userId)
+      .upsert(rows, { onConflict: 'user_id,quest_pool_id,date_assigned', ignoreDuplicates: true })
+    if (error) console.error('[ensureTodayQuests] upsert failed:', error.message, error.details, error.hint)
   }
+
+  // Re-fetch as the canonical source: on a concurrent insert the upsert response can be empty.
+  return { needsSelection: false, quests: await fetchToday() }
 }
 
 // ── Expire stale cycles on dashboard load ────────────────────

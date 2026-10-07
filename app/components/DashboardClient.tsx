@@ -15,6 +15,9 @@ import DailyCompletionSummary from './DailyCompletionSummary'
 import PenaltyZone from './PenaltyZone'
 import CompletionRing from './CompletionRing'
 import StreakCard from './StreakCard'
+import Button from '@/components/ui/Button'
+import Card from '@/components/ui/Card'
+import ProgressBar from '@/components/ui/ProgressBar'
 import type { UserProfile, Stats, Quest, QuestPool, CycleReportData, PoolCategory, PenaltyQuest } from '@/lib/types'
 
 const STAT_LABELS: Record<string, string> = {
@@ -409,9 +412,7 @@ export default function DashboardClient({
         )}
 
         {/* Today: progress ring + level in one compact card */}
-        <section aria-label="Today's progress" className="card-gradient border border-outline-variant p-4 relative overflow-hidden mx-4 mt-4">
-          <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-primary opacity-50" />
-          <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-primary opacity-50" />
+        <Card as="section" corners aria-label="Today's progress" className="p-4 mx-4 mt-4">
 
           {eliteUnlockBanner && (
             <div className="mb-4 p-3 bg-tertiary/10 border border-tertiary/40 flex items-center justify-between gap-2">
@@ -442,22 +443,13 @@ export default function DashboardClient({
                 <span>XP {profile.current_xp} / {profile.xp_to_next_level}</span>
                 <span className="text-secondary">{xpPercent}%</span>
               </div>
-              <div
-                role="progressbar"
-                aria-label="Experience to next level"
-                aria-valuemin={0}
-                aria-valuemax={profile.xp_to_next_level}
-                aria-valuenow={profile.current_xp}
-                className="mt-1 h-1 bg-surface-container-high w-full"
-              >
-                <div className="h-full bg-secondary" style={{ width: `${xpPercent}%` }} />
-              </div>
+              <ProgressBar className="mt-1" label="Experience to next level" value={profile.current_xp} max={profile.xp_to_next_level} />
               {timeUntilReset && (
                 <p className="mt-2 font-mono text-xs text-outline">Day resets in {timeUntilReset}</p>
               )}
             </div>
           </div>
-        </section>
+        </Card>
 
         {/* Daily Hunt */}
         <section id="quests" aria-labelledby="hunt-heading" className="px-4">
@@ -471,23 +463,15 @@ export default function DashboardClient({
               </div>
               <div className="flex items-center">
                 {completedCount > 0 && (
-                  <button
-                    onClick={() => setShowSummary(true)}
-                    className="min-h-11 px-3 font-mono text-system-label text-outline hover:text-secondary transition-colors"
-                  >
+                  <Button variant="ghost" onClick={() => setShowSummary(true)}>
                     REPORT
-                  </button>
+                  </Button>
                 )}
-                <button
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                  aria-label="Refresh quests"
-                  className="min-h-11 min-w-11 font-mono text-system-label text-outline hover:text-secondary transition-colors disabled:cursor-not-allowed"
-                >
+                <Button variant="ghost" onClick={handleRefresh} disabled={isRefreshing} aria-label="Refresh quests" className="min-w-11 px-0">
                   {isRefreshing
                     ? <span aria-hidden="true" className="inline-block w-2 h-2 rounded-full bg-current animate-pulse align-middle" />
                     : <span aria-hidden="true" className="material-symbols-outlined" style={{ fontSize: '20px' }}>refresh</span>}
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -574,7 +558,7 @@ export default function DashboardClient({
             const val = stats ? (stats as unknown as Record<string, number>)[key] : 0
             const isTargeted = statDelta && statDelta.stat === key
             return (
-              <div key={key} className="relative card-gradient border border-outline-variant p-3 text-center">
+              <Card key={key} className="relative p-3 text-center">
                 {isTargeted && (
                   <span key={`stat-float-${statDelta.key}`} aria-hidden="true" className="absolute -top-5 left-1/2 -translate-x-1/2 font-mono text-xs text-secondary font-bold float-up-fade">
                     +{statDelta.amount}
@@ -585,7 +569,7 @@ export default function DashboardClient({
                   <span className="sr-only">{key}</span>
                 </p>
                 <p className="font-display text-stat-value text-on-surface">{val}</p>
-              </div>
+              </Card>
             )
           })}
         </div>
@@ -690,16 +674,17 @@ function QuestCard({
   const categoryIcon = CATEGORY_ICONS[quest.category] ?? 'radio_button_checked'
 
   return (
-    <article
+    <Card
+      as="article"
       aria-busy={processing}
-      className={`card-gradient border relative overflow-hidden p-4 flex flex-col gap-3 transition-all ${
+      className={`relative overflow-hidden p-4 flex flex-col gap-3 transition-all ${
         isFlashing
           ? 'quest-complete-flash'
           : quest.is_completed
-            ? 'border-outline-variant'
+            ? ''
             : quest.quest_type === 'elite'
               ? 'border-tertiary/40 hover:border-tertiary/70'
-              : 'border-outline-variant hover:border-primary-container'
+              : 'hover:border-primary-container'
       }`}
     >
       {/* Top row: difficulty badge + icon */}
@@ -729,31 +714,21 @@ function QuestCard({
             <span aria-hidden="true" className="material-symbols-outlined align-middle mr-1" style={{ fontSize: '16px' }}>check_circle</span>
             +{quest.xp_reward} XP EARNED
           </p>
-          <button
-            onClick={onToggle}
-            disabled={processing}
-            aria-label={`Undo: ${quest.title}`}
-            className="min-h-11 px-3 border border-outline-variant font-mono text-system-label text-on-surface-variant hover:border-outline hover:text-on-surface transition-colors disabled:opacity-60"
-          >
+          <Button variant="outline" onClick={onToggle} disabled={processing} aria-label={`Undo: ${quest.title}`}>
             UNDO
-          </button>
+          </Button>
         </div>
       ) : (
-        <button
-          onClick={onToggle}
-          disabled={processing}
-          aria-label={`Mark done: ${quest.title}`}
-          className="w-full min-h-11 border border-outline hover:border-secondary font-mono text-system-label text-on-surface hover:text-secondary transition-all flex items-center justify-center gap-2"
-        >
+        <Button variant="outline" block onClick={onToggle} disabled={processing} aria-label={`Mark done: ${quest.title}`}>
           {processing
             ? <span aria-hidden="true" className="w-3 h-3 rounded-full bg-primary-container animate-pulse" />
             : 'MARK DONE'
           }
-        </button>
+        </Button>
       )}
 
       {isFlashing && <span key={quest.id} aria-hidden="true" className="xp-float">+{quest.xp_reward}</span>}
-    </article>
+    </Card>
   )
 }
 
@@ -775,22 +750,22 @@ function EliteQuestCard({
 }) {
   if (isLocked) {
     return (
-      <div className="card-gradient border border-dashed border-outline-variant p-4">
+      <Card tone="dashed" className="p-4">
         <div className="flex items-center gap-3 mb-1">
           <span aria-hidden="true" className="material-symbols-outlined text-outline" style={{ fontSize: '16px' }}>lock</span>
           <h3 className="font-mono text-system-label text-on-surface-variant">ELITE QUEST</h3>
           <span className="font-mono text-xs text-outline border border-outline-variant px-2 py-0.5 tracking-widest ml-auto">LOCKED</span>
         </div>
         <p className="font-mono text-xs text-outline">Unlocks at level 6 (E-Rank). Keep going.</p>
-      </div>
+      </Card>
     )
   }
 
   if (!quest) {
     return (
-      <div className="card-gradient border border-dashed border-outline-variant p-4">
+      <Card tone="dashed" className="p-4">
         <p className="font-mono text-xs text-outline">No elite quest assigned yet. It appears with your next daily hunt.</p>
-      </div>
+      </Card>
     )
   }
 
@@ -821,7 +796,7 @@ function PenaltyQuestCard({
   onComplete: () => void
 }) {
   return (
-    <article className="mb-4 card-gradient border border-error/40 relative overflow-hidden p-4 flex flex-col gap-3">
+    <Card as="article" tone="danger" className="mb-4 p-4 flex flex-col gap-3">
       {/* Critical penalty badge */}
       <div className="flex justify-between items-center">
         <span className="font-mono text-system-label text-error border border-error/50 bg-error/5 px-2 py-0.5">
@@ -844,18 +819,13 @@ function PenaltyQuestCard({
       {quest.is_completed ? (
         <p className="font-mono text-system-label text-secondary">PENALTY CLEARED — +{quest.xp_reward} XP</p>
       ) : (
-        <button
-          onClick={onComplete}
-          disabled={processing}
-          aria-label={`Complete penalty: ${quest.title}`}
-          className="w-full min-h-11 border border-error/60 hover:border-error bg-error/5 hover:bg-error/10 font-mono text-system-label text-error tracking-widest transition-all flex items-center justify-center gap-2"
-        >
+        <Button variant="danger" block onClick={onComplete} disabled={processing} aria-label={`Complete penalty: ${quest.title}`}>
           {processing
             ? <span aria-hidden="true" className="w-3 h-3 rounded-full bg-error animate-pulse" />
             : 'COMPLETE PENALTY'
           }
-        </button>
+        </Button>
       )}
-    </article>
+    </Card>
   )
 }

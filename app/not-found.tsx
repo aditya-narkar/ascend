@@ -1,41 +1,18 @@
 import Link from 'next/link'
+import { buttonClass } from '@/components/ui/Button'
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-bg-primary flex items-center justify-center px-4">
-      <div className="text-center max-w-sm">
-        <p
-          className="text-xs tracking-[0.4em] text-text-secondary mb-4"
-          style={{ fontFamily: 'var(--font-share-tech-mono)' }}
-        >
-          SYSTEM ERROR 404
-        </p>
-        <p
-          className="text-6xl font-bold text-highlight-1 text-glow mb-2"
-          style={{ fontFamily: 'var(--font-rajdhani)' }}
-        >
-          404
-        </p>
-        <p
-          className="text-lg font-bold text-text-primary mb-2"
-          style={{ fontFamily: 'var(--font-rajdhani)' }}
-        >
-          LOCATION NOT FOUND
-        </p>
-        <p
-          className="text-xs text-text-secondary mb-8"
-          style={{ fontFamily: 'var(--font-share-tech-mono)' }}
-        >
-          The system could not locate this resource.
-        </p>
-        <Link
-          href="/dashboard"
-          className="text-xs tracking-[0.2em] border border-aura-primary/60 px-6 py-3 text-highlight-1 hover:bg-aura-primary/10 transition-colors rounded-sm"
-          style={{ fontFamily: 'var(--font-share-tech-mono)' }}
-        >
-          RETURN TO CONSOLE
+    <main className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="max-w-sm text-center">
+        <p className="mb-4 font-mono text-xs tracking-[0.4em] text-on-surface-variant">SYSTEM ERROR 404</p>
+        <p className="mb-2 font-display text-6xl font-bold text-secondary text-glow">404</p>
+        <h1 className="mb-2 font-display text-lg font-bold text-on-surface">LOCATION NOT FOUND</h1>
+        <p className="mb-8 font-mono text-xs text-on-surface-variant">This page doesn&apos;t exist or has moved.</p>
+        <Link href="/dashboard" className={buttonClass({ variant: 'outline' })}>
+          RETURN TO TODAY
         </Link>
       </div>
-    </div>
+    </main>
   )
 }

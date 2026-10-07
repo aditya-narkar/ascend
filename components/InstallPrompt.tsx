@@ -1,5 +1,6 @@
 'use client'
 
+import Button from '@/components/ui/Button'
 import { useEffect, useState } from 'react'
 
 interface BeforeInstallPromptEvent extends Event {
@@ -98,19 +99,13 @@ export default function InstallPrompt() {
 
         <div className="flex gap-3 mt-4">
           {!isIOS && (
-            <button
-              onClick={handleInstall}
-              className="flex-1 h-10 bg-primary-container border border-[#6B3FD4] font-mono text-system-label text-on-primary-container uppercase tracking-widest hover:shadow-[0_0_10px_#6CCBFF] transition-all text-xs"
-            >
+            <Button className="flex-1" onClick={handleInstall}>
               INSTALL NOW
-            </button>
+            </Button>
           )}
-          <button
-            onClick={handleDismiss}
-            className="px-4 h-10 border border-outline-variant font-mono text-system-label text-outline uppercase tracking-widest text-xs hover:border-outline transition-colors"
-          >
+          <Button variant="outline" onClick={handleDismiss}>
             LATER
-          </button>
+          </Button>
         </div>
       </div>
     </div>

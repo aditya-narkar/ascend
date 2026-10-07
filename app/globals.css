@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* ── New Stitch design system ── */
+  /* ── Colour ── */
   --color-background: #14121a;
   --color-surface: #14121a;
   --color-surface-container: #201e27;
@@ -33,26 +33,17 @@
   --color-card-bg-top: #111827;
   --color-card-bg-bottom: #0B1120;
   --color-border-card: #4A5280;
+  --color-primary-edge: #6b3fd4;
+  --color-success: #34d399;
 
-  /* ── Legacy tokens (backward compat) ── */
-  --color-bg-primary: #070A12;
-  --color-bg-secondary: #0B1120;
-  --color-aura-primary: #4B2DBD;
-  --color-aura-secondary: #37207D;
-  --color-highlight-1: #6CCBFF;
-  --color-highlight-2: #8EF0FF;
-  --color-text-primary: #E7ECFF;
-  --color-text-secondary: #8D96B8;
-  --color-border: #1A2035;
-  --color-card: #0D1526;
+  /* ── Elevation ── */
+  --shadow-glow: 0 0 10px var(--color-glow-cyan);
+  --shadow-aura: 0 0 15px rgba(75, 45, 189, 0.3);
 
   /* ── Font vars ── */
   --font-display: var(--font-display);
   --font-mono: var(--font-mono);
   --font-body: var(--font-body);
-  /* Backward compat aliases so old var(--font-rajdhani) inline refs still work */
-  --font-rajdhani: var(--font-display);
-  --font-share-tech-mono: var(--font-mono);
 
   /* ── Border radius ── */
   --radius-DEFAULT: 0.125rem;
@@ -70,8 +61,8 @@ html, body {
 }
 
 body {
-  background-color: #14121a;
-  color: #e5e0ec;
+  background-color: var(--color-background);
+  color: var(--color-on-surface);
   font-family: var(--font-body), 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -86,8 +77,8 @@ body {
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: #14121a; }
-::-webkit-scrollbar-thumb { background: #484554; border-radius: 2px; }
+::-webkit-scrollbar-track { background: var(--color-background); }
+::-webkit-scrollbar-thumb { background: var(--color-outline-variant); border-radius: 2px; }
 
 /* ── Typography utility classes ── */
 .font-display { font-family: var(--font-display), 'Space Grotesk', sans-serif; }
@@ -129,14 +120,10 @@ body {
 
 /* ── Card & glow utilities ── */
 .card-gradient {
-  background: linear-gradient(180deg, #111827 0%, #0B1120 100%);
+  background: linear-gradient(180deg, var(--color-card-bg-top) 0%, var(--color-card-bg-bottom) 100%);
 }
-.glow-border       { box-shadow: 0 0 4px #4B2DBD; }
-.glow-border-cyan  { border-color: #6CCBFF; box-shadow: 0 0 8px rgba(108,203,255,0.4); }
-.glow-border-error { border-color: #ffb4ab; box-shadow: 0 0 4px #93000a; }
-.btn-glow:hover    { box-shadow: 0 0 10px #6CCBFF; }
-.text-glow         { text-shadow: 0 0 8px rgba(108,203,255,0.5); }
-.level-glow        { text-shadow: 0 0 20px rgba(75,45,189,0.8); }
+.text-glow  { text-shadow: 0 0 8px rgba(108,203,255,0.5); }
+.level-glow { text-shadow: 0 0 20px rgba(75,45,189,0.8); }
 
 .scanlines {
   background-image: repeating-linear-gradient(
@@ -168,29 +155,7 @@ body {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
-/* ── Legacy animations (kept for non-redesigned components) ── */
-.aura-glow    { box-shadow: 0 0 40px rgba(75,45,189,0.4), 0 0 80px rgba(75,45,189,0.15); }
-.aura-glow-sm { box-shadow: 0 0 15px rgba(75,45,189,0.3); }
-.highlight-glow { box-shadow: 0 0 20px rgba(108,203,255,0.3); }
-.scan-line { position: relative; overflow: hidden; }
-.scan-line::after {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%;
-  width: 50%; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(108,203,255,0.4), transparent);
-  animation: scan 4s linear infinite;
-}
-@keyframes scan {
-  0%   { left: -100%; top: 0%; }
-  100% { left: 200%;  top: 100%; }
-}
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 8px rgba(75,45,189,0.6); }
-  50%       { box-shadow: 0 0 20px rgba(108,203,255,0.8); }
-}
-.xp-bar-fill { animation: pulse-glow 2s ease-in-out infinite; }
-
+/* ── Animations ── */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -209,12 +174,6 @@ body {
 }
 .flicker-in { animation: flicker 1.2s ease-in forwards; }
 
-.rank-badge {
-  font-family: var(--font-display), sans-serif;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-}
-
 @keyframes questCompleteFlash {
   0%   { border-color: #34D399; box-shadow: 0 0 18px rgba(52,211,153,0.5); background-color: rgba(52,211,153,0.08); }
   60%  { border-color: #34D399; box-shadow: 0 0 10px rgba(52,211,153,0.3); background-color: rgba(52,211,153,0.05); }
@@ -229,13 +188,6 @@ body {
 }
 .float-up-fade { animation: floatUpFade 2s ease-out forwards; pointer-events: none; }
 
-@keyframes xpPop {
-  0%   { transform: scale(1); }
-  40%  { transform: scale(1.18); color: #34D399; }
-  100% { transform: scale(1); }
-}
-.xp-pop { animation: xpPop 0.45s ease-out forwards; }
-
 @keyframes slideUp {
   from { transform: translateY(10px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
@@ -249,18 +201,12 @@ body {
 .xp-float {
   position: absolute;
   right: 12px; top: 0;
-  color: #7ed0ff;
+  color: var(--color-secondary);
   font-family: var(--font-mono), monospace;
   font-size: 12px; font-weight: 700;
   animation: xpFloat 0.8s ease-out forwards;
   pointer-events: none;
 }
-
-@keyframes elitePulse {
-  0%, 100% { box-shadow: 0 0 8px rgba(255,182,147,0.3); }
-  50%       { box-shadow: 0 0 20px rgba(255,182,147,0.6); }
-}
-.elite-unlock-pulse { animation: elitePulse 2s ease-in-out infinite; }
 
 /* ── Accessibility ── */
 :focus-visible {

@@ -1,5 +1,7 @@
 'use client'
 
+import Button from '@/components/ui/Button'
+
 export default function OfflinePage() {
   return (
     <div className="min-h-screen bg-[#14121a] flex items-center justify-center px-4">
@@ -20,12 +22,9 @@ export default function OfflinePage() {
           </p>
         </div>
 
-        <button
-          onClick={() => window.location.reload()}
-          className="w-full h-12 bg-primary-container border border-[#6B3FD4] font-mono text-system-label text-on-primary-container uppercase tracking-widest"
-        >
+        <Button block onClick={() => window.location.reload()}>
           RETRY CONNECTION
-        </button>
+        </Button>
 
         <p className="font-mono text-xs text-outline">
           Previously loaded data may still be available below.

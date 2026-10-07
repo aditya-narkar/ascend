@@ -1,5 +1,7 @@
 'use client'
 
+import Button from '@/components/ui/Button'
+import Card from '@/components/ui/Card'
 import { useNotifications, type PushAvailability } from '@/lib/useNotifications'
 
 const UNAVAILABLE: Record<Exclude<PushAvailability, 'ok' | 'checking'>, string> = {
@@ -29,11 +31,7 @@ export default function NotificationCard() {
   const problem = unavailable || blocked
 
   return (
-    <section
-      id="alerts"
-      aria-label="Alerts"
-      className={`card-gradient border p-4 flex items-center justify-between gap-3 ${problem ? 'border-error/40' : 'border-secondary/40'}`}
-    >
+    <Card as="section" id="alerts" aria-label="Alerts" tone={problem ? 'danger' : 'accent'} className="p-4 flex items-center justify-between gap-3">
       <div className="min-w-0">
         <h3 className={`font-mono text-system-label mb-1 ${problem ? 'text-error' : 'text-secondary'}`}>{title}</h3>
         <p role="status" className="font-mono text-xs text-on-surface-variant leading-relaxed">
@@ -42,21 +40,14 @@ export default function NotificationCard() {
       </div>
 
       {enabled ? (
-        <button
-          onClick={test}
-          disabled={testing}
-          className="min-h-11 shrink-0 border border-secondary/50 px-4 font-mono text-xs tracking-widest text-secondary disabled:cursor-not-allowed disabled:opacity-60"
-        >
+        <Button variant="outline" onClick={test} disabled={testing} className="shrink-0">
           {testing ? 'SENDING...' : 'SEND TEST'}
-        </button>
+        </Button>
       ) : !problem ? (
-        <button
-          onClick={enable}
-          className="min-h-11 shrink-0 border border-[#6B3FD4] bg-primary-container px-4 font-mono text-xs tracking-widest text-on-primary-container hover:shadow-[0_0_10px_#6CCBFF] transition-all"
-        >
+        <Button onClick={enable} className="shrink-0">
           ENABLE
-        </button>
+        </Button>
       ) : null}
-    </section>
+    </Card>
   )
 }

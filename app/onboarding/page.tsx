@@ -1,5 +1,7 @@
 'use client'
 
+import Button from '@/components/ui/Button'
+import ProgressBar from '@/components/ui/ProgressBar'
 import { useState, useEffect } from 'react'
 import { completeOnboarding } from '@/app/actions/onboarding'
 import { saveNotificationSubscription } from '@/app/actions/notifications'
@@ -287,13 +289,9 @@ function QuestionStep({
               <span aria-hidden="true" className="material-symbols-outlined">arrow_back</span>
             </button>
           )}
-          <button
-            onClick={() => localSelected && onNext(localSelected)}
-            disabled={!localSelected}
-            className="flex-1 h-14 bg-primary-container border border-[#6B3FD4] font-mono text-system-label text-on-surface uppercase tracking-widest disabled:opacity-40 hover:shadow-[0_0_10px_#6CCBFF] transition-all"
-          >
+          <Button size="lg" className="flex-1" onClick={() => localSelected && onNext(localSelected)} disabled={!localSelected}>
             CONFIRM EVALUATION →
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -371,13 +369,10 @@ function ArchetypeReveal({ archetype, onContinue }: { archetype: Archetype; onCo
         </div>
 
         <div className="w-full">
-          <button
-            onClick={onContinue}
-            className="w-full bg-primary-container border border-[#6B3FD4] py-4 px-6 flex items-center justify-center gap-2 font-mono text-system-label text-on-primary-container tracking-[0.3em] uppercase hover:shadow-[0_0_10px_#6CCBFF] transition-all duration-300"
-          >
+          <Button size="lg" block onClick={onContinue}>
             ACCEPT CLASSIFICATION
             <span aria-hidden="true" className="material-symbols-outlined" style={{ fontSize: '16px' }}>arrow_forward</span>
-          </button>
+          </Button>
         </div>
       </main>
     </div>
@@ -427,13 +422,9 @@ function CommitmentStep({
             </p>
           )}
 
-          <button
-            onClick={onContinue}
-            disabled={!hunterName.trim() || !commitmentText.trim()}
-            className="w-full bg-primary-container border border-[#6B3FD4] font-mono text-system-label text-on-primary-container tracking-widest py-4 uppercase disabled:opacity-40 hover:shadow-[0_0_10px_#6CCBFF] transition-all"
-          >
+          <Button size="lg" block onClick={onContinue} disabled={!hunterName.trim() || !commitmentText.trim()}>
             SEAL THE OATH
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -482,9 +473,9 @@ function NotificationStep({ onContinue }: { onContinue: () => void }) {
         </div>
 
         {status === 'idle' && (
-          <button onClick={handleAllow} className="w-full bg-primary-container border border-[#6B3FD4] font-mono text-system-label text-on-primary-container tracking-widest py-4 uppercase mb-3 hover:shadow-[0_0_10px_#6CCBFF] transition-all">
+          <Button size="lg" block className="mb-3" onClick={handleAllow}>
             ALLOW NOTIFICATIONS
-          </button>
+          </Button>
         )}
         {status === 'requesting' && <p className="font-mono text-system-label text-on-surface-variant mb-3">REQUESTING PERMISSION...</p>}
         {status === 'granted'    && <p className="font-mono text-system-label text-secondary mb-3">NOTIFICATIONS ENABLED. PROCEEDING...</p>}
@@ -527,12 +518,7 @@ function StatsReveal({
               <span className="font-mono text-system-label w-8 text-right" style={{ color: STAT_COLORS[key] }}>
                 {STAT_LABELS[key]}
               </span>
-              <div className="flex-1 h-1 bg-surface-container overflow-hidden">
-                <div
-                  className="h-full transition-all duration-1000"
-                  style={{ width: `${value}%`, background: STAT_COLORS[key] }}
-                />
-              </div>
+              <ProgressBar className="flex-1" label={`${key} baseline`} value={value} fill={STAT_COLORS[key]} />
               <span className="font-mono text-system-label text-on-surface-variant w-6 text-left">{value}</span>
             </div>
           ))}
@@ -544,13 +530,9 @@ function StatsReveal({
           </p>
         )}
 
-        <button
-          onClick={onBegin}
-          disabled={loading}
-          className="w-full bg-primary-container border border-[#6B3FD4] font-mono text-system-label text-on-primary-container tracking-widest py-4 uppercase disabled:opacity-50 hover:shadow-[0_0_10px_#6CCBFF] transition-all"
-        >
+        <Button size="lg" block onClick={onBegin} disabled={loading}>
           {loading ? 'INITIALIZING SYSTEM...' : 'BEGIN ASCENSION'}
-        </button>
+        </Button>
       </div>
     </div>
   )

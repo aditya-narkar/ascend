@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { logout } from '@/app/actions/auth'
 import NotificationCard from '@/components/NotificationCard'
+import Button from '@/components/ui/Button'
+import Card from '@/components/ui/Card'
 import type { UserProfile, Stats } from '@/lib/types'
 
 const RANK_ORDER = ['F', 'E', 'D', 'C', 'B', 'A', 'S', 'Monarch'] as const
@@ -44,9 +46,7 @@ export default async function ProfilePage() {
     <div className="max-w-lg mx-auto flex flex-col pb-24">
 
       {/* Identity Block */}
-      <section className="card-gradient border border-outline-variant p-6 relative overflow-hidden mx-4 mt-4">
-        <div className="absolute top-0 right-0 w-6 h-6 border-t border-r border-primary-container opacity-40" />
-        <div className="absolute bottom-0 left-0 w-6 h-6 border-b border-l border-primary-container opacity-40" />
+      <Card as="section" corners className="p-6 mx-4 mt-4">
 
         <div className="flex items-start gap-4">
           <div className="w-20 h-20 bg-secondary/10 border border-secondary flex items-center justify-center shrink-0">
@@ -63,12 +63,12 @@ export default async function ProfilePage() {
             </div>
           </div>
           <form action={logout}>
-            <button type="submit" className="font-mono text-system-label text-outline hover:text-on-surface border border-outline-variant hover:border-outline px-3 py-2 transition-colors shrink-0">
+            <Button type="submit" variant="outline" className="shrink-0">
               LOGOUT
-            </button>
+            </Button>
           </form>
         </div>
-      </section>
+      </Card>
 
       <div className="flex flex-col gap-4 px-4 mt-4">
 

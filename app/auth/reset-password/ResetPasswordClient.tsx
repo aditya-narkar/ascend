@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import AuthShell from '@/components/ui/AuthShell'
+import Button from '@/components/ui/Button'
+import { Field, FormMessage } from '@/components/ui/Field'
 
 type Props = {
   code?: string
@@ -88,99 +91,51 @@ export default function ResetPasswordClient({ code }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-bg-primary flex items-center justify-center p-4">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full bg-aura-primary/10 blur-3xl" />
+    <AuthShell
+      eyebrow="CREDENTIAL RESET"
+      title="SET NEW PASSWORD"
+      footer={
+        <Link href="/auth/login" className="text-secondary hover:underline">
+          Return to login
+        </Link>
+      }
+    >
+      {!ready && !error && <FormMessage tone="info">Verifying recovery link...</FormMessage>}
+
+      {ready && (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Field
+            label="NEW PASSWORD"
+            id="password"
+            type="password"
+            required
+            minLength={6}
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="At least 6 characters"
+          />
+          <Field
+            label="CONFIRM PASSWORD"
+            id="confirm"
+            type="password"
+            required
+            autoComplete="new-password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            placeholder="Repeat the new password"
+          />
+
+          <Button type="submit" size="lg" block disabled={loading}>
+            {loading ? 'UPDATING...' : 'UPDATE PASSWORD'}
+          </Button>
+        </form>
+      )}
+
+      <div className="space-y-4">
+        {error && <FormMessage tone="error">{error}</FormMessage>}
+        {message && <FormMessage tone="info">{message}</FormMessage>}
       </div>
-
-      <div className="relative w-full max-w-sm">
-        <div className="text-center mb-10">
-          <p className="text-xs tracking-[0.4em] text-text-secondary mb-2">CREDENTIAL RESET</p>
-          <h1
-            className="text-4xl font-bold tracking-widest text-text-primary"
-            style={{ fontFamily: 'var(--font-rajdhani)' }}
-          >
-            ASCEND
-          </h1>
-          <div className="mt-3 h-px bg-gradient-to-r from-transparent via-aura-primary to-transparent" />
-        </div>
-
-        <div className="bg-card border border-border rounded-sm p-8 aura-glow-sm">
-          <p className="text-xs tracking-[0.3em] text-text-secondary mb-6">SET NEW PASSWORD</p>
-
-          {!ready && !error && (
-            <p className="text-xs text-text-secondary tracking-wide border border-border bg-bg-secondary px-3 py-2 rounded-sm">
-              Verifying recovery link...
-            </p>
-          )}
-
-          {ready && (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="password" className="block text-xs text-text-secondary tracking-widest mb-1.5">
-                  NEW PASSWORD
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  minLength={6}
-                  autoComplete="new-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-bg-secondary border border-border rounded-sm px-3 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:border-aura-primary transition-colors"
-                  placeholder="min. 6 characters"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="confirm" className="block text-xs text-text-secondary tracking-widest mb-1.5">
-                  CONFIRM PASSWORD
-                </label>
-                <input
-                  id="confirm"
-                  name="confirm"
-                  type="password"
-                  required
-                  autoComplete="new-password"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                  className="w-full bg-bg-secondary border border-border rounded-sm px-3 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:border-aura-primary transition-colors"
-                  placeholder="confirm new key"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-aura-primary hover:bg-aura-primary/80 disabled:opacity-50 text-text-primary font-semibold tracking-widest py-3 rounded-sm transition-all mt-2"
-                style={{ fontFamily: 'var(--font-rajdhani)' }}
-              >
-                {loading ? 'UPDATING...' : 'UPDATE PASSWORD'}
-              </button>
-            </form>
-          )}
-
-          {error && (
-            <p role="alert" className="text-xs text-red-400 tracking-wide border border-red-400/20 bg-red-400/5 px-3 py-2 rounded-sm">
-              {error}
-            </p>
-          )}
-
-          {message && (
-            <p className="text-xs text-highlight-1 tracking-wide border border-highlight-1/20 bg-highlight-1/5 px-3 py-2 rounded-sm">
-              {message}
-            </p>
-          )}
-
-          <div className="mt-6 text-center">
-            <Link href="/auth/login" className="text-xs text-highlight-1 hover:text-highlight-2 transition-colors">
-              Return to login
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   )
 }

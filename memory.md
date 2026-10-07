@@ -58,13 +58,12 @@ The repo is now web-only again.
 
 ### 2. Root routing
 
-- `/` checks auth and whether `users.hunter_name` exists.
-- Redirect rules:
-  - no auth -> `/auth/login`
-  - auth but not onboarded -> `/onboarding`
-  - auth and onboarded -> `/dashboard`
-
-This logic exists both in [`app/page.tsx`](/C:/Users/Aditya/project/ascend/app/page.tsx) and in the auth guard proxy in [`proxy.ts`](/C:/Users/Aditya/project/ascend/proxy.ts).
+- All access rules live in [`proxy.ts`](/C:/Users/Aditya/project/ascend/proxy.ts), which fetches `users.hunter_name` at most once per request:
+  - signed out: `/dashboard`, `/stats`, `/profile`, `/onboarding` -> `/auth/login`; everything else passes through
+  - signed in, not onboarded: protected routes -> `/onboarding`; auth pages -> `/onboarding`
+  - signed in, onboarded: `/onboarding` and auth pages -> `/dashboard`
+  - `/auth/reset-password` is exempt (it needs a recovery session)
+- `/` has no logic: [`app/page.tsx`](/C:/Users/Aditya/project/ascend/app/page.tsx) just redirects to `/dashboard`, and the proxy then applies the rules above (the protected pages also re-check the profile themselves).
 
 ### 3. Onboarding
 
@@ -173,10 +172,8 @@ Important behavior:
 - today's quests are generated from active `quest_selections`
 - one daily quest is inserted per active non-elite selected quest pool
 - elite quest is inserted separately for level 6+ users
-- there is an in-process generation lock: `generatingUsers`
-- `ensureTodayQuests` also keeps a per-user generated-date cache: `generatedDates`
-- quest generation now uses DB upserts with `onConflict: 'user_id,quest_pool_id,date_assigned'` as the final duplicate guard
-- `ensureTodayQuests` re-fetches after upsert to survive race conditions
+- `ensureTodayQuests` is idempotent and stateless: it fetches today's quests first (the hot path, one query); only if there are none does it load selections, delete stale incomplete quests, and upsert today's rows (plus the elite quest) with `onConflict: 'user_id,quest_pool_id,date_assigned'` + `ignoreDuplicates`. The DB unique constraint is the only duplicate guard — do not add in-process locks or caches (they are useless on serverless and were removed)
+- it re-fetches after the upsert because a concurrent insert can make the upsert response empty
 - `fetchToday()` intentionally avoids ordering by `created_at`; the tracked `quests` schema in [`supabase-schema.sql`](/C:/Users/Aditya/project/ascend/supabase-schema.sql) does not define that column, and using it caused valid quest reads to fail and dashboards to show `0` quests
 - dashboard client also calls `ensureTodayQuests` on mount if server rendered zero quests and no selection phase is needed
 
@@ -604,7 +601,9 @@ The app has a strong "system / hunter / ascension" visual identity.
 UI patterns:
 
 - dark sci-fi palette
-- Space Grotesk (`font-display`), JetBrains Mono (`font-mono`) and Inter (`font-body`) via `next/font` in `app/layout.tsx` (legacy `--font-rajdhani` / `--font-share-tech-mono` names are only aliases)
+- Space Grotesk (`font-display`), JetBrains Mono (`font-mono`) and Inter (`font-body`) via `next/font` in `app/layout.tsx`
+- one token set in `app/globals.css` (`@theme`): Material-style colours (`background`, `surface-*`, `on-surface*`, `primary*`, `secondary*`, `tertiary`, `error`, `outline*`) plus `success`, `primary-edge`, `shadow-glow`, `shadow-aura`. The old "legacy" tokens (`bg-primary`, `text-text-*`, `aura-*`, `highlight-*`, `border`, `card`) and the `font-rajdhani` / `font-share-tech-mono` aliases were deleted; do not reintroduce them. Prefer tokens over hex; when a colour must be passed as data (category/tier accents) pass a CSS variable such as `var(--color-secondary)` and derive tints with `color-mix`
+- shared UI kit in [`components/ui/`](/C:/Users/Aditya/project/ascend/components/ui): `Button` (variants primary/outline/danger/ghost, sizes md/lg, `buttonClass()` for `<Link>`), `Card` (tones default/accent/danger/dashed, `corners`), `ProgressBar` (always needs an accessible `label`), `Modal` (dialog semantics, Escape, focus in/restore, Tab trap, `closeOnBackdrop`, `align`), `Field`/`FormMessage` (labelled inputs, alert/status messages), `AuthShell` (frame for login/signup/forgot/reset). Reuse these instead of pasting class strings; `LevelUpModal` and `DailyCompletionSummary` are built on `Modal`
 - dense uppercase labels
 - glow, flicker, scan-line, pulse animations
 - mobile-first, card-heavy layout
@@ -626,7 +625,6 @@ Avoid flattening this into generic SaaS styling unless explicitly requested.
 - There are several visible mojibake characters in file output when viewed via PowerShell, likely from encoding/display mismatch rather than intended copy changes.
 - `cycles.total_days_active` appears in the schema and UI report types, but I did not find active update logic for it.
 - `archetype_quests` remains in schema/seed data but active daily generation comes from `quest_pools`.
-- There is duplicate auth/onboarding redirect logic in both route handling and the root page, so changes to access rules should keep both paths aligned.
 - Parts of this document have been updated incrementally over time; when changing gameplay rules, verify that `memory.md` still matches both the latest code and schema, not just one of them.
 
 ## Maintenance note

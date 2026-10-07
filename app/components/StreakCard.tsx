@@ -1,3 +1,4 @@
+import Card from '@/components/ui/Card'
 import { getShieldState, getDaysUntilShield } from '@/lib/streakShield'
 import type { UserProfile } from '@/lib/types'
 
@@ -32,7 +33,7 @@ export default function StreakCard({
   }[shieldState]
 
   return (
-    <section aria-label="Streak" className="card-gradient border border-outline-variant p-4">
+    <Card as="section" aria-label="Streak" className="p-4">
       {shieldMessage && (
         <p
           role="status"
@@ -67,6 +68,6 @@ export default function StreakCard({
           <dd className="font-display text-lg font-bold text-on-surface">{cycleDaysCompleted}</dd>
         </div>
       </dl>
-    </section>
+    </Card>
   )
 }

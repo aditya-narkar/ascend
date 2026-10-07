@@ -28,76 +28,31 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const path = request.nextUrl.pathname
-  const isAuthRoute = path.startsWith('/auth')
-  const isPasswordResetRoute = path.startsWith('/auth/reset-password')
+  // The password-reset page needs a (recovery) session, so signed-in users may stay on it.
+  const isAuthRoute = path.startsWith('/auth') && !path.startsWith('/auth/reset-password')
   const isOnboarding = path.startsWith('/onboarding')
   const isProtected = path.startsWith('/dashboard') || path.startsWith('/stats') || path.startsWith('/profile')
+  const redirectTo = (to: string) => NextResponse.redirect(new URL(to, request.url))
 
-  if (!user && isProtected) {
-    return NextResponse.redirect(new URL('/auth/login', request.url))
-  }
+  if (!user) return isProtected || isOnboarding ? redirectTo('/auth/login') : supabaseResponse
 
-  if (!user && isOnboarding) {
-    return NextResponse.redirect(new URL('/auth/login', request.url))
-  }
+  if (!(isAuthRoute || isOnboarding || isProtected)) return supabaseResponse
 
-  if (user && isAuthRoute && !isPasswordResetRoute) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('hunter_name')
-      .eq('id', user.id)
-      .single()
+  // Signed in: every remaining route depends on whether onboarding is finished.
+  const { data: profile } = await supabase
+    .from('users')
+    .select('hunter_name')
+    .eq('id', user.id)
+    .single()
+  const onboarded = Boolean(profile?.hunter_name)
 
-    return NextResponse.redirect(
-      new URL(profile?.hunter_name ? '/dashboard' : '/onboarding', request.url)
-    )
-  }
-
-  if (user && isProtected) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('hunter_name')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile?.hunter_name) {
-      return NextResponse.redirect(new URL('/onboarding', request.url))
-    }
-  }
-
-  if (user && isOnboarding) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('hunter_name')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.hunter_name) {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-  }
-
-  if (!user && path === '/') {
-    return NextResponse.redirect(new URL('/auth/login', request.url))
-  }
-
-  if (user && path === '/') {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('hunter_name')
-      .eq('id', user.id)
-      .single()
-
-    return NextResponse.redirect(
-      new URL(profile?.hunter_name ? '/dashboard' : '/onboarding', request.url)
-    )
-  }
-
-  return supabaseResponse
+  if (isProtected) return onboarded ? supabaseResponse : redirectTo('/onboarding')
+  if (isOnboarding) return onboarded ? redirectTo('/dashboard') : supabaseResponse
+  return redirectTo(onboarded ? '/dashboard' : '/onboarding') // auth pages
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
