@@ -452,6 +452,10 @@ Base schema files:
 - [`supabase-penalty-system.sql`](/C:/Users/Aditya/project/ascend/supabase-penalty-system.sql)
 - [`supabase-trigger.sql`](/C:/Users/Aditya/project/ascend/supabase-trigger.sql)
 - [`supabase-push-subscriptions-multi-device.sql`](/C:/Users/Aditya/project/ascend/supabase-push-subscriptions-multi-device.sql)
+- [`supabase-streak-shield.sql`](/C:/Users/Aditya/project/ascend/supabase-streak-shield.sql) — adds the shield / `cycle_days_completed` / `pending_system_message` columns to `users`. Required: `updateStreak()` writes them in one `update`, so if they are missing the whole streak update fails
+- [`supabase-rpc-lockdown.sql`](/C:/Users/Aditya/project/ascend/supabase-rpc-lockdown.sql) — creates (if missing) and locks the stat/cycle RPCs to the service role
+- [`supabase-game-day-ist.sql`](/C:/Users/Aditya/project/ascend/supabase-game-day-ist.sql) — moves the daily-reset cron to 00:00 IST
+- [`supabase-diagnose.sql`](/C:/Users/Aditya/project/ascend/supabase-diagnose.sql) — read-only check of which tables, columns and functions exist; run it when something "silently does nothing" (Supabase errors from the JS client are mostly not surfaced in the UI)
 
 ### Main tables
 
